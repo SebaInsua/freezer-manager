@@ -1,4 +1,4 @@
-\# Freezer Manager
+# Freezer Manager
 
 
 
@@ -6,37 +6,37 @@ Freezer Manager is a REST API designed to help households manage food purchases,
 
 
 
-\## Project Goals
+## Project Goals
 
 
 
-\- Track food purchases and quantities.
+- Track food purchases and quantities.
 
-\- Manage inventory by batches.
+- Manage inventory by batches.
 
-\- Register food consumption and meal preparation.
+- Register food consumption and meal preparation.
 
-\- Estimate freezer capacity and available space.
+- Estimate freezer capacity and available space.
 
-\- Keep a history of inventory movements.
-
-
-
-\## Tech Stack
+- Keep a history of inventory movements.
 
 
 
-\- Java
-
-\- Spring Boot
-
-\- PostgreSQL
-
-\- Spring Data JPA
+## Tech Stack
 
 
 
-\## Project Status
+- Java
+
+- Spring Boot
+
+- PostgreSQL
+
+- Spring Data JPA
+
+
+
+## Project Status
 
 
 
