@@ -16,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -30,14 +31,20 @@ public class StorageEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long storageEntryId;
 
+    @Column(nullable = false)
+    @NotNull(message = "La fecha y hora del ingreso es obligatoria")
+    private LocalDateTime movementDateTime;
+
     @CreationTimestamp
     @Column(nullable = false,updatable = false)
-    private LocalDateTime createdDateTime;
+    @NotNull(message = "La fecha y hora del registro es obligatoria")
+    private LocalDateTime recordedAt;
 
     @OneToMany(mappedBy = "storageEntry",cascade = CascadeType.ALL,orphanRemoval = true)
     List<StorageEntryDetail> details;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "storage_id",nullable = false)
+    @NotNull
     private Storage storage;
 }

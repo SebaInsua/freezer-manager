@@ -11,6 +11,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -29,6 +31,8 @@ public class Storage {
 
     private String modelo;
 
+    @Positive
+    @NotNull
     @Column(nullable = false,precision = 10,scale = 2)
     private BigDecimal capacidadLitros;
 

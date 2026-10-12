@@ -16,6 +16,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -32,16 +34,21 @@ public class StorageEntryDetail {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "food_id",nullable = false)
+    @NotNull
     private Food food;
 
     @Enumerated(EnumType.STRING)
+    @NotNull
     @Column(name = "unit_selected",nullable = false)
     private UnitOfMeasure selectedUnit;
 
+    @Positive
+    @NotNull
     @Column(nullable = false,precision = 10,scale = 2)
     private BigDecimal cantidad;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "storage_entry_id",nullable = false)
+    @NotNull
     private StorageEntry storageEntry;
 }
