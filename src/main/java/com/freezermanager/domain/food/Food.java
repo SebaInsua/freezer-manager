@@ -1,12 +1,18 @@
 package com.freezermanager.domain.food;
 
+import java.util.Set;
+
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,7 +26,7 @@ import lombok.Setter;
 public class Food {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long foodId;
 
     @Column(nullable = false,unique = true)
     private String name;
@@ -28,6 +34,9 @@ public class Food {
     @Enumerated(EnumType.STRING)
     private FoodCategory category;
 
+    @ElementCollection(targetClass = UnitOfMeasure.class,fetch = FetchType.LAZY)
+    @CollectionTable(name = "food_unit_of_measure",joinColumns = @JoinColumn(name = "food_id"))
     @Enumerated(EnumType.STRING)
-    private UnitOfMeasure unitOfMeasure;
+    @Column(name = "unit_of_measure",nullable = false)
+    private Set<UnitOfMeasure> unitOfMeasures;
 }
