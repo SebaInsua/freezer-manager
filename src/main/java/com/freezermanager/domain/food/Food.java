@@ -14,6 +14,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -28,6 +30,7 @@ public class Food {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long foodId;
 
+    @NotBlank
     @Column(nullable = false,unique = true)
     private String name;
 
@@ -38,5 +41,6 @@ public class Food {
     @CollectionTable(name = "food_unit_of_measure",joinColumns = @JoinColumn(name = "food_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "unit_of_measure",nullable = false)
+    @NotEmpty
     private Set<UnitOfMeasure> unitOfMeasures;
 }
