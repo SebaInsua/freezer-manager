@@ -86,6 +86,4 @@ public class StorageControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value(messageExpected))
                 .andExpect(jsonPath("$.status").value(404));
     }
-
-
 }

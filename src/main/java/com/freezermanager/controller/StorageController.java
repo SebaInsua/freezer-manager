@@ -19,15 +19,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 @RequestMapping("api/v1/storages")
 public class StorageController {
     private final StorageService storageService;
-
     @GetMapping
     public ResponseEntity<List<Storage>> getAllStorages() {
         return ResponseEntity.ok(storageService.getStorages());
     }
-
     @GetMapping("/{id}")
     public ResponseEntity<Storage> getStorageById(@PathVariable Long id) {
         return ResponseEntity.ok(storageService.getStorage(id));
-    } 
-    
+    }
 }
