@@ -5,6 +5,8 @@ import java.util.List;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,6 +18,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,6 +44,8 @@ public class StorageEntry {
     private LocalDateTime recordedAt;
 
     @OneToMany(mappedBy = "storageEntry",cascade = CascadeType.ALL,orphanRemoval = true)
+    @NotEmpty(message = "El registro debe tener al menos un detalle")
+    @JsonManagedReference
     List<StorageEntryDetail> details;
 
     @ManyToOne(fetch = FetchType.LAZY)

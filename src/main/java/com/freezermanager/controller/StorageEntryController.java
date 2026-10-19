@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.freezermanager.domain.storage.StorageEntry;
+import com.freezermanager.domain.storage.StorageEntryDetail;
 import com.freezermanager.service.StorageEntryService;
 
 import lombok.RequiredArgsConstructor;
@@ -27,5 +28,10 @@ public class StorageEntryController {
     @GetMapping("/{id}")
     public ResponseEntity<StorageEntry> getStorageEntryById(@PathVariable Long id) {
         return ResponseEntity.ok(storageEntryService.getStorageEntryById(id));
+    }
+
+    @GetMapping("/{id}/details")
+    public ResponseEntity<List<StorageEntryDetail>> getDetailsByEntryId(@PathVariable Long id){
+        return ResponseEntity.ok(storageEntryService.getDetailsByEntryId(id));
     }
 }

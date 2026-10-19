@@ -2,6 +2,7 @@ package com.freezermanager.domain.storage;
 
 import java.math.BigDecimal;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.UnitOfMeasure;
 
@@ -50,5 +51,6 @@ public class StorageEntryDetail {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "storage_entry_id",nullable = false)
     @NotNull
+    @JsonBackReference
     private StorageEntry storageEntry;
 }
