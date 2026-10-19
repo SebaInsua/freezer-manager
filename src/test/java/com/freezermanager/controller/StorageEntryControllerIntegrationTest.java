@@ -22,9 +22,11 @@ import com.freezermanager.domain.food.UnitOfMeasure;
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageEntry;
 import com.freezermanager.domain.storage.StorageEntryDetail;
+import com.freezermanager.domain.storage.StorageItem;
 import com.freezermanager.repository.FoodRepository;
 import com.freezermanager.repository.StorageEntryDetailRepository;
 import com.freezermanager.repository.StorageEntryRepository;
+import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
 
 @SpringBootTest
@@ -40,6 +42,9 @@ public class StorageEntryControllerIntegrationTest {
 
     @Autowired
     private StorageEntryDetailRepository storageEntryDetailRepository;
+
+    @Autowired
+    private StorageItemRepository storageItemRepository;
 
     @Autowired
     private StorageRepository storageRepository;
@@ -127,6 +132,151 @@ public class StorageEntryControllerIntegrationTest {
                         comparesEqualTo(2)))
                 .andExpect(jsonPath("$[0].selectedUnit")
                         .value("KG"));
+    }
+
+        @Test
+    public void testIntegrationCreateStorageEntryAndCreateStorageItem() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        Food savedFood = foodRepository.save(food);
+
+        String requestBody = """
+                {
+                    "movementDateTime": "2026-10-19T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 3
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.storageEntryId").isNumber())
+                .andExpect(jsonPath("$.movementDateTime")
+                        .value("2026-10-19T12:00:00"))
+                .andExpect(jsonPath("$.details", hasSize(1)))
+                .andExpect(jsonPath("$.details[0].food.foodId")
+                        .value(savedFood.getFoodId()))
+                .andExpect(jsonPath("$.details[0].selectedUnit").value("KG"))
+                .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(3)));
+
+        StorageItem savedItem = storageItemRepository
+                .findByStorageIdAndFoodId(savedStorage.getId(), savedFood.getFoodId())
+                .orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                0,
+                savedItem.getCantidad().compareTo(BigDecimal.valueOf(3)));
+    }
+
+        @Test
+    public void testIntegrationCreateStorageEntryAndIncreaseExistingStorageItem() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Carne");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem existingItem = new StorageItem();
+        existingItem.setStorage(savedStorage);
+        existingItem.setFood(savedFood);
+        existingItem.setCantidad(BigDecimal.valueOf(2));
+        storageItemRepository.save(existingItem);
+
+        String requestBody = """
+                {
+                    "movementDateTime": "2026-10-19T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 3
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.details", hasSize(1)))
+                .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(3)));
+
+        StorageItem updatedItem = storageItemRepository
+                .findByStorageIdAndFoodId(savedStorage.getId(), savedFood.getFoodId())
+                .orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                0,
+                updatedItem.getCantidad().compareTo(BigDecimal.valueOf(5)));
+    }
+
+        @Test
+    public void testIntegrationInvalidUnitDoesNotUpdateInventory() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Carne");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem existingItem = new StorageItem();
+        existingItem.setStorage(savedStorage);
+        existingItem.setFood(savedFood);
+        existingItem.setCantidad(BigDecimal.valueOf(2));
+        storageItemRepository.save(existingItem);
+
+        String requestBody = """
+                {
+                    "movementDateTime": "2026-10-19T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "UNIT",
+                            "cantidad": 3
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().is5xxServerError());
+
+        StorageItem unchangedItem = storageItemRepository
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                0,
+                unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2)));
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                0,
+                storageEntryRepository.count());
     }
 
         private StorageEntry createEntryWithDetail(Storage storage, String foodName) {
