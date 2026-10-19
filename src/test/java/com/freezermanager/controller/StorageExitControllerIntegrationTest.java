@@ -20,6 +20,15 @@ import com.freezermanager.domain.storage.StorageExit;
 import com.freezermanager.repository.StorageExitRepository;
 import com.freezermanager.repository.StorageRepository;
 
+import java.util.Set;
+
+import com.freezermanager.domain.food.Food;
+import com.freezermanager.domain.food.FoodCategory;
+import com.freezermanager.domain.food.UnitOfMeasure;
+import com.freezermanager.domain.storage.StorageExitDetail;
+import com.freezermanager.repository.FoodRepository;
+import com.freezermanager.repository.StorageExitDetailRepository;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -33,6 +42,12 @@ public class StorageExitControllerIntegrationTest {
 
     @Autowired
     private StorageRepository storageRepository;
+
+    @Autowired
+    private StorageExitDetailRepository storageExitDetailRepository;
+
+    @Autowired
+    private FoodRepository foodRepository;
 
         @Test
     public void testIntegrationWhenStoragesExitsItsEmpty() throws Exception{
@@ -114,4 +129,39 @@ public class StorageExitControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value(messageExpected))
                 .andExpect(jsonPath("$.status").value(404));
     }
+
+        @Test
+    public void testIntegrationWhenExitHasDetails() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storageRepository.save(storage);
+
+        StorageExit exit = new StorageExit();
+        exit.setMovementDateTime(LocalDateTime.of(2026, 10, 16, 13, 15));
+        exit.setRecordedAt(LocalDateTime.now());
+        exit.setStorage(storage);
+        StorageExit exitGuardado = storageExitRepository.save(exit);
+
+        Food food = new Food();
+        food.setName("Pollo");
+        food.setCategory(FoodCategory.values()[0]);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.values()[0]));
+        Food foodGuardado = foodRepository.save(food);
+
+        StorageExitDetail detail = new StorageExitDetail();
+        detail.setFood(foodGuardado);
+        detail.setSelectedUnit(UnitOfMeasure.values()[0]);
+        detail.setCantidad(BigDecimal.valueOf(2));
+        detail.setStorageExit(exitGuardado);
+        storageExitDetailRepository.save(detail);
+
+        mockMvc.perform(get("/api/v1/storagesexit/{id}/details",
+                        exitGuardado.getStorageExitId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].cantidad", comparesEqualTo(2)))
+                .andExpect(jsonPath("$[0].selectedUnit").exists())
+                .andExpect(jsonPath("$[0].storageExit").doesNotExist());
+    }
+
 }

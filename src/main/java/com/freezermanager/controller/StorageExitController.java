@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.freezermanager.domain.storage.StorageExit;
+import com.freezermanager.domain.storage.StorageExitDetail;
 import com.freezermanager.service.StorageExitService;
 
 import lombok.RequiredArgsConstructor;
@@ -25,5 +26,9 @@ public class StorageExitController {
     @GetMapping("/{id}")
     public ResponseEntity<StorageExit> getStorageExitById(@PathVariable Long id) {
         return ResponseEntity.ok(storageExitService.getStorageExitById(id));
+    }
+    @GetMapping("/{id}/details")
+    public ResponseEntity<List<StorageExitDetail>> getDetailsByExitId(@PathVariable Long id){
+        return ResponseEntity.ok(storageExitService.getDetailsByExitId(id));
     }
 }
