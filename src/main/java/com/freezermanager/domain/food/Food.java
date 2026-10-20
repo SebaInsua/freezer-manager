@@ -43,4 +43,7 @@ public class Food {
     @Column(name = "unit_of_measure",nullable = false)
     @NotEmpty
     private Set<UnitOfMeasure> unitOfMeasures;
+
+    @Column(nullable = false)
+    private boolean active = true;
 }

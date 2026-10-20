@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.freezermanager.domain.food.Food;
 
 public interface FoodRepository extends JpaRepository<Food,Long>{
+    public boolean existsByNameIgnoreCase(String name);
 }
