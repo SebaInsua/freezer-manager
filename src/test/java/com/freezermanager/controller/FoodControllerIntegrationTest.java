@@ -15,6 +15,7 @@ import com.freezermanager.repository.FoodRepository;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -112,5 +113,103 @@ public class FoodControllerIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value(messageExpected))
                 .andExpect(jsonPath("$.status").value(404));
+    }
+
+        @Test
+    public void testIntegrationCreateFood() throws Exception {
+        String requestBody = """
+                {
+                    "name": "Pollo",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.foodId").isNumber())
+                .andExpect(jsonPath("$.name").value("Pollo"))
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.unitOfMeasures[0]").value("KG"));
+    }
+
+    @Test
+    public void testIntegrationCreateFoodWithDuplicateNameIgnoringCase() throws Exception {
+        String firstRequest = """
+                {
+                    "name": "Pollo",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        String duplicateRequest = """
+                {
+                    "name": "POLLO",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(firstRequest))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(duplicateRequest))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    public void testIntegrationCreateFoodWithBlankName() throws Exception {
+        String requestBody = """
+                {
+                    "name": "   ",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testIntegrationCreateFoodWithoutUnits() throws Exception {
+        String requestBody = """
+                {
+                    "name": "Pollo",
+                    "category": "MEAT",
+                    "unitOfMeasures": []
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+    }
+
+        @Test
+    public void testIntegrationCreateFoodWithoutCategory() throws Exception {
+        String requestBody = """
+                {
+                    "name": "Pollo",
+                    "category": null,
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
     }
 }
