@@ -49,4 +49,10 @@ public class FoodService {
         foodToUpdate.setUnitOfMeasures(request.unitOfMeasures());
         return foodToUpdate;
     }
+
+    @Transactional
+    public void deactivateFood(Long id){
+        Food foodToDeactivate = getFoodById(id);
+        foodToDeactivate.setActive(false);
+    }
 }
