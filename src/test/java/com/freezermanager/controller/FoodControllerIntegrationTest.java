@@ -17,10 +17,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.*;
+
+import org.springframework.test.web.servlet.MvcResult;
+import com.jayway.jsonpath.JsonPath;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -210,6 +215,181 @@ public class FoodControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/foods")
                         .contentType("application/json")
                         .content(requestBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ACTUALIZACION EXITOSA
+
+    @Test
+    public void testIntegrationUpdateFood() throws Exception {
+        String createBody = """
+                {
+                    "name": "Pollo",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(createBody))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String response = result.getResponse().getContentAsString();
+        Long foodId = ((Number) JsonPath.read(response, "$.foodId")).longValue();
+
+        String updateBody = """
+                {
+                    "name": "Pollo orgánico",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG", "UNIT"]
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/foods/" + foodId)
+                        .contentType("application/json")
+                        .content(updateBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Pollo orgánico"))
+                .andExpect(jsonPath("$.category").value("MEAT"))
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.unitOfMeasures", hasSize(2)));
+    }
+
+    // ID INEXISTENTE AL ACTUALIZAR
+
+    @Test
+    public void testIntegrationUpdateFoodNotFound() throws Exception {
+        String requestBody = """
+                {
+                    "name": "Pollo",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/foods/9999")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isNotFound());
+    }
+
+    // NOMBRE DUPLICADO IGNORANDO MAYUSCULAS AL ACTUALIZAR
+
+    @Test
+    public void testIntegrationUpdateFoodWithDuplicateName() throws Exception {
+        String firstFood = """
+                {
+                    "name": "Pollo",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        String secondFood = """
+                {
+                    "name": "Pescado",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(firstFood))
+                .andExpect(status().isCreated());
+
+        MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(secondFood))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long foodId = ((Number) JsonPath.read(
+        result.getResponse().getContentAsString(), "$.foodId")).longValue();
+
+        String updateBody = """
+                {
+                    "name": "POLLO",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/foods/" + foodId)
+                        .contentType("application/json")
+                        .content(updateBody))
+                .andExpect(status().isConflict());
+    }
+
+    // NOMBRE VACIO AL ACTUALIZAR
+
+    @Test
+    public void testIntegrationUpdateFoodWithBlankName() throws Exception {
+        String createBody = """
+                {
+                    "name": "Pollo",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(createBody))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long foodId = ((Number) JsonPath.read(
+                result.getResponse().getContentAsString(), "$.foodId")).longValue();
+
+        String updateBody = """
+                {
+                    "name": " ",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/foods/" + foodId)
+                        .contentType("application/json")
+                        .content(updateBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    // UNIDADES DE MEDIDA VACIAS AL ACTUALIZAR
+
+    @Test
+    public void testIntegrationUpdateFoodWithoutUnits() throws Exception {
+        String createBody = """
+                {
+                    "name": "Pollo",
+                    "category": "MEAT",
+                    "unitOfMeasures": ["KG"]
+                }
+                """;
+
+        MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                        .contentType("application/json")
+                        .content(createBody))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long foodId = ((Number) JsonPath.read(
+        result.getResponse().getContentAsString(), "$.foodId")).longValue();
+
+        String updateBody = """
+                {
+                    "name": "Pollo",
+                    "category": "MEAT",
+                    "unitOfMeasures": []
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/foods/" + foodId)
+                        .contentType("application/json")
+                        .content(updateBody))
                 .andExpect(status().isBadRequest());
     }
 }

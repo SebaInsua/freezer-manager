@@ -3,6 +3,7 @@ package com.freezermanager.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.dto.FoodRequest;
@@ -35,5 +36,17 @@ public class FoodService {
         foodToSave.setCategory(request.category());
         foodToSave.setUnitOfMeasures(request.unitOfMeasures());
         return foodRepository.save(foodToSave);
+    }
+
+    @Transactional
+    public Food updateFoods(FoodRequest request, Long id){
+        Food foodToUpdate = getFoodById(id);
+        if(foodRepository.existsByNameIgnoreCaseAndFoodIdNot(request.name(),id)){
+            throw new AlreadyExistException("El nombre del alimento ya existe.");
+        }
+        foodToUpdate.setName(request.name());
+        foodToUpdate.setCategory(request.category());
+        foodToUpdate.setUnitOfMeasures(request.unitOfMeasures());
+        return foodToUpdate;
     }
 }
