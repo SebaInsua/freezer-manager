@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.freezermanager.domain.food.Food;
@@ -28,8 +29,8 @@ public class FoodController {
     private final FoodService foodService;
 
     @GetMapping
-    public ResponseEntity<List<Food>> getFoods(){
-        return ResponseEntity.ok(foodService.getFoods());
+    public ResponseEntity<List<Food>> getFoods(@RequestParam(required = false) Boolean active){
+        return ResponseEntity.ok(foodService.getFoods(active));
     }
 
     @GetMapping("/{id}")

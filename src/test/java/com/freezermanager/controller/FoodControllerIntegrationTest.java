@@ -392,4 +392,53 @@ public class FoodControllerIntegrationTest {
                         .content(updateBody))
                 .andExpect(status().isBadRequest());
     }
+
+        @Test
+        public void testIntegrationGetFoodsReturnsOnlyActiveFoods() throws Exception {
+        foodRepository.save(createFood("Pollo", true));
+        foodRepository.save(createFood("Pescado", false));
+
+        mockMvc.perform(get("/api/v1/foods"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Pollo"))
+                .andExpect(jsonPath("$[0].active").value(true));
+        }
+
+                @Test
+        public void testIntegrationGetFoodsWithActiveTrue() throws Exception {
+        foodRepository.save(createFood("Pollo", true));
+        foodRepository.save(createFood("Pescado", false));
+        foodRepository.save(createFood("Carne", true));
+
+        mockMvc.perform(get("/api/v1/foods")
+                        .param("active", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[*].active",
+                        everyItem(equalTo(true))));
+        }
+
+                @Test
+        public void testIntegrationGetFoodsWithActiveFalse() throws Exception {
+        foodRepository.save(createFood("Pollo", true));
+        foodRepository.save(createFood("Pescado", false));
+        foodRepository.save(createFood("Carne", false));
+
+        mockMvc.perform(get("/api/v1/foods")
+                        .param("active", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[*].active",
+                        everyItem(equalTo(false))));
+        }
+
+        private Food createFood(String name, boolean active) {
+        Food food = new Food();
+        food.setName(name);
+        food.setCategory(FoodCategory.MEAT);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        food.setActive(active);
+        return food;
+        }
 }
