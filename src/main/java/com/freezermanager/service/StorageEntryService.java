@@ -55,7 +55,7 @@ public class StorageEntryService {
         StorageEntry entry = new StorageEntry();
         List<StorageEntryDetail> listDetails = new ArrayList<>();
         for(StorageEntryDetailRequest item : request.details()){
-            Food foodToSave = foodRepository.findById(item.foodId()).orElseThrow(()->new NotFoundException("No existe alimento con el ID: " + item.foodId()));
+            Food foodToSave = getActiveFoodById(item.foodId());
             if(foodToSave.getUnitOfMeasures().contains(item.selectedUnit())){
                 StorageEntryDetail detalleAIngresar = new StorageEntryDetail();
                 detalleAIngresar.setFood(foodToSave);
@@ -88,5 +88,13 @@ public class StorageEntryService {
 
         storageEntryRepository.save(entry);
         return entry;
+    }
+
+    private Food getActiveFoodById(Long id){
+        Food alimentoABuscar = foodRepository.findById(id).orElseThrow(()-> new NotFoundException("No existe alimento con el ID: "+id));
+        if(!alimentoABuscar.isActive()){
+            throw new IllegalArgumentException("No se puede ingresar un alimento inactivo");
+        }
+        return alimentoABuscar;
     }
 }

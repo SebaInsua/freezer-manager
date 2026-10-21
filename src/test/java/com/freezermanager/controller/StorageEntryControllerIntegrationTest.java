@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.freezermanager.domain.food.Food;
@@ -279,6 +280,111 @@ public class StorageEntryControllerIntegrationTest {
                 storageEntryRepository.count());
     }
 
+        @Test
+    public void testIntegrationInactiveFoodDoesNotCreateStorageEntryOrUpdateInventory() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        food.setActive(false);
+        Food savedFood = foodRepository.save(food);
+
+        String requestBody = """
+                {
+                    "movementDateTime": "2026-10-19T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 3
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().is5xxServerError());
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                0, storageEntryRepository.count());
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                storageItemRepository
+                        .findByStorageIdAndFoodId(
+                                savedStorage.getId(), savedFood.getFoodId())
+                        .isEmpty());
+    }
+    
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @Test
+    public void testIntegrationInactiveFoodRollsBackEntireStorageEntry() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food activeFood = new Food();
+        activeFood.setName("Pollo");
+        activeFood.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        activeFood.setActive(true);
+        Food savedActiveFood = foodRepository.save(activeFood);
+
+        Food inactiveFood = new Food();
+        inactiveFood.setName("Carne");
+        inactiveFood.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        inactiveFood.setActive(false);
+        Food savedInactiveFood = foodRepository.save(inactiveFood);
+
+        String requestBody = """
+                {
+                    "movementDateTime": "2026-10-19T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 3
+                        },
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 2
+                        }
+                    ]
+                }
+                """.formatted(
+                        savedStorage.getId(),
+                        savedActiveFood.getFoodId(),
+                        savedInactiveFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().is5xxServerError());
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                0, storageEntryRepository.count());
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                storageItemRepository.findByStorageIdAndFoodId(
+                        savedStorage.getId(), savedActiveFood.getFoodId())
+                        .isEmpty());
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                storageItemRepository.findByStorageIdAndFoodId(
+                        savedStorage.getId(), savedInactiveFood.getFoodId())
+                        .isEmpty());
+        storageItemRepository.deleteAll();
+        storageEntryRepository.deleteAll();
+        foodRepository.deleteAll();
+        storageRepository.deleteAll();
+    }
+
         private StorageEntry createEntryWithDetail(Storage storage, String foodName) {
         Food food = new Food();
         food.setName(foodName);
@@ -300,5 +406,4 @@ public class StorageEntryControllerIntegrationTest {
 
         return storageEntryRepository.save(entry);
     }
-
 }
