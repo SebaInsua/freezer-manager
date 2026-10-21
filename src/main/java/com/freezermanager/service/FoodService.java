@@ -18,8 +18,11 @@ import lombok.RequiredArgsConstructor;
 public class FoodService {
     private final FoodRepository foodRepository;
 
-    public List<Food> getFoods(){
-        return foodRepository.findAll();
+    public List<Food> getFoods(Boolean active){
+        if(active == null){
+            return foodRepository.findAllByActive(true);
+        }
+        return foodRepository.findAllByActive(active);
     }
 
     public Food getFoodById(Long id){

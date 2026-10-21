@@ -27,19 +27,21 @@ public class FoodServiceTest {
     private FoodService foodService;
 
     @Test
-    public void shouldFindAllFoods(){
-        List<Food>expectedFoods = new ArrayList<>();
+    public void shouldFindAllFoods() {
+        List<Food> expectedFoods = new ArrayList<>();
         Food item = new Food();
         item.setFoodId(1L);
         item.setName("Pizza");
+        item.setActive(true);
         expectedFoods.add(item);
-        when(foodRepository.findAll()).thenReturn(expectedFoods);
 
-        List<Food> result = foodService.getFoods();
+        when(foodRepository.findAllByActive(true)).thenReturn(expectedFoods);
+
+        List<Food> result = foodService.getFoods(null);
 
         assertEquals(expectedFoods, result);
 
-        verify(foodRepository).findAll();
+        verify(foodRepository).findAllByActive(true);
     }
 
     @Test
