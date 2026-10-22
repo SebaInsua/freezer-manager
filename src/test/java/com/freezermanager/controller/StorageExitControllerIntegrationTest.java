@@ -262,7 +262,7 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().is5xxServerError());
+            .andExpect(status().isBadRequest());
 
         StorageItem unchangedItem = storageItemRepository
             .findByStorageIdAndFoodId(
