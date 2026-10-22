@@ -1,6 +1,7 @@
 package com.freezermanager.controller;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageExit;
 import com.freezermanager.repository.StorageExitRepository;
+import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
 
 import java.util.Set;
@@ -26,8 +28,11 @@ import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.FoodCategory;
 import com.freezermanager.domain.food.UnitOfMeasure;
 import com.freezermanager.domain.storage.StorageExitDetail;
+import com.freezermanager.domain.storage.StorageItem;
 import com.freezermanager.repository.FoodRepository;
 import com.freezermanager.repository.StorageExitDetailRepository;
+
+import org.springframework.http.MediaType;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -48,6 +53,9 @@ public class StorageExitControllerIntegrationTest {
 
     @Autowired
     private FoodRepository foodRepository;
+
+    @Autowired
+    private StorageItemRepository storageItemRepository;
 
         @Test
     public void testIntegrationWhenStoragesExitsItsEmpty() throws Exception{
@@ -162,6 +170,113 @@ public class StorageExitControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].cantidad", comparesEqualTo(2)))
                 .andExpect(jsonPath("$[0].selectedUnit").exists())
                 .andExpect(jsonPath("$[0].storageExit").doesNotExist());
+    }
+
+    @Test
+    public void testIntegrationCreateStorageExitAndSubtractStock() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo para egreso");
+        food.setCategory(FoodCategory.values()[0]);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
+        food.setActive(true);
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem item = new StorageItem();
+        item.setStorage(savedStorage);
+        item.setFood(savedFood);
+        item.setCantidad(BigDecimal.valueOf(5));
+        storageItemRepository.save(item);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-22T10:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "UNIT",
+                        "cantidad": 2
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.storageExitId").exists())
+            .andExpect(jsonPath("$.details", hasSize(1)))
+            .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(2)));
+
+        StorageItem updatedItem = storageItemRepository
+            .findByStorageIdAndFoodId(
+                savedStorage.getId(),
+                savedFood.getFoodId()
+            )
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            BigDecimal.valueOf(3).compareTo(updatedItem.getCantidad())
+        );
+    }
+
+    @Test
+    public void testIntegrationExitWithInsufficientStock() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo stock insuficiente");
+        food.setCategory(FoodCategory.values()[0]);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
+        food.setActive(true);
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem item = new StorageItem();
+        item.setStorage(savedStorage);
+        item.setFood(savedFood);
+        item.setCantidad(BigDecimal.valueOf(5));
+        storageItemRepository.save(item);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-22T10:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "UNIT",
+                        "cantidad": 6
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().is5xxServerError());
+
+        StorageItem unchangedItem = storageItemRepository
+            .findByStorageIdAndFoodId(
+                savedStorage.getId(),
+                savedFood.getFoodId()
+            )
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            BigDecimal.valueOf(5).compareTo(unchangedItem.getCantidad())
+        );
+
+        assertEquals(0, storageExitRepository.count());
     }
 
 }

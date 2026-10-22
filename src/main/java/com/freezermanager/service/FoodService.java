@@ -58,4 +58,12 @@ public class FoodService {
         Food foodToDeactivate = getFoodById(id);
         foodToDeactivate.setActive(false);
     }
+
+    public Food getActiveFoodById(Long id){
+        Food alimentoABuscar = foodRepository.findById(id).orElseThrow(()-> new NotFoundException("No existe alimento con el ID: "+id));
+        if(!alimentoABuscar.isActive()){
+            throw new IllegalArgumentException("No se puede ingresar un alimento inactivo");
+        }
+        return alimentoABuscar;
+    }
 }
