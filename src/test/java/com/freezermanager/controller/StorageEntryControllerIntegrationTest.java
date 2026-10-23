@@ -1,6 +1,7 @@
 package com.freezermanager.controller;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -25,7 +26,6 @@ import com.freezermanager.domain.storage.StorageEntry;
 import com.freezermanager.domain.storage.StorageEntryDetail;
 import com.freezermanager.domain.storage.StorageItem;
 import com.freezermanager.repository.FoodRepository;
-import com.freezermanager.repository.StorageEntryDetailRepository;
 import com.freezermanager.repository.StorageEntryRepository;
 import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
@@ -40,9 +40,6 @@ public class StorageEntryControllerIntegrationTest {
 
     @Autowired
     private StorageEntryRepository storageEntryRepository;
-
-    @Autowired
-    private StorageEntryDetailRepository storageEntryDetailRepository;
 
     @Autowired
     private StorageItemRepository storageItemRepository;
@@ -477,4 +474,120 @@ public class StorageEntryControllerIntegrationTest {
                 savedItem.getCantidad().compareTo(BigDecimal.valueOf(2500)));
     }
 
+        @Test
+    public void testIntegrationEntryWithZeroQuantityIsRejected() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Alimento cantidad cero");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        Food savedFood = foodRepository.save(food);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-23T12:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "KG",
+                        "cantidad": 0
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                .contentType("application/json")
+                .content(requestBody))
+            .andExpect(status().isBadRequest());
+
+        assertEquals(0, storageEntryRepository.count());
+
+        assertTrue(storageItemRepository
+            .findByStorageIdAndFoodId(
+                savedStorage.getId(),
+                savedFood.getFoodId())
+            .isEmpty());
+    }
+
+        @Test
+    public void testIntegrationEntryWithNegativeQuantityIsRejected() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Alimento cantidad cero");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        Food savedFood = foodRepository.save(food);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-23T12:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "KG",
+                        "cantidad": -1
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                .contentType("application/json")
+                .content(requestBody))
+            .andExpect(status().isBadRequest());
+
+        assertEquals(0, storageEntryRepository.count());
+
+        assertTrue(storageItemRepository
+            .findByStorageIdAndFoodId(
+                savedStorage.getId(),
+                savedFood.getFoodId())
+            .isEmpty());
+    }
+
+        @Test
+    public void testIntegrationEntryWithNullQuantityIsRejected() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Alimento cantidad cero");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        Food savedFood = foodRepository.save(food);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-23T12:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "KG",
+                        "cantidad": null
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                .contentType("application/json")
+                .content(requestBody))
+            .andExpect(status().isBadRequest());
+
+        assertEquals(0, storageEntryRepository.count());
+
+        assertTrue(storageItemRepository
+            .findByStorageIdAndFoodId(
+                savedStorage.getId(),
+                savedFood.getFoodId())
+            .isEmpty());
+    }
 }

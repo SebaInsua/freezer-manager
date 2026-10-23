@@ -479,9 +479,9 @@ public class StorageExitControllerIntegrationTest {
 
 
 
-@Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Test
-public void testIntegrationExitWithMultipleDetailsAndInsufficientStockRollsBack()
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        @Test
+    public void testIntegrationExitWithMultipleDetailsAndInsufficientStockRollsBack()
         throws Exception {
 
     Storage savedStorage = null;
@@ -659,4 +659,355 @@ public void testIntegrationExitWithMultipleDetailsAndInsufficientStockRollsBack(
     }
 }
 
+        @Test
+    public void testIntegrationExitWithZeroQuantityIsRejected() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Alimento egreso cantidad cero");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem storageItem = new StorageItem();
+        storageItem.setStorage(savedStorage);
+        storageItem.setFood(savedFood);
+        storageItem.setCantidad(BigDecimal.valueOf(2000));
+        storageItemRepository.save(storageItem);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-23T12:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "KG",
+                        "cantidad": 0
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType("application/json")
+                .content(requestBody))
+            .andExpect(status().isBadRequest());
+
+        assertEquals(0, storageExitRepository.count());
+
+        StorageItem unchangedItem = storageItemRepository
+            .findByStorageIdAndFoodId(
+                savedStorage.getId(),
+                savedFood.getFoodId())
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2000))
+        );
+    }
+
+        @Test
+    public void testIntegrationExitWithNegativeQuantityIsRejected() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Alimento egreso cantidad negativa");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem storageItem = new StorageItem();
+        storageItem.setStorage(savedStorage);
+        storageItem.setFood(savedFood);
+        storageItem.setCantidad(BigDecimal.valueOf(2000));
+        storageItemRepository.save(storageItem);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-23T12:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "KG",
+                        "cantidad": -1
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType("application/json")
+                .content(requestBody))
+            .andExpect(status().isBadRequest());
+
+        assertEquals(0, storageExitRepository.count());
+
+        StorageItem unchangedItem = storageItemRepository
+            .findByStorageIdAndFoodId(
+                savedStorage.getId(),
+                savedFood.getFoodId())
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2000))
+        );
+    }
+
+        @Test
+    public void testIntegrationExitWithNullQuantityIsRejected() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Alimento egreso cantidad nula");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem storageItem = new StorageItem();
+        storageItem.setStorage(savedStorage);
+        storageItem.setFood(savedFood);
+        storageItem.setCantidad(BigDecimal.valueOf(2000));
+        storageItemRepository.save(storageItem);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-23T12:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "KG",
+                        "cantidad": null
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType("application/json")
+                .content(requestBody))
+            .andExpect(status().isBadRequest());
+
+        assertEquals(0, storageExitRepository.count());
+
+        StorageItem unchangedItem = storageItemRepository
+            .findByStorageIdAndFoodId(
+                savedStorage.getId(),
+                savedFood.getFoodId())
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2000))
+        );
+    }
+
+        @Test
+    public void testIntegrationInvalidUnitDoesNotUpdateInventory() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Carne unidad incompatible");
+        food.setCategory(FoodCategory.values()[0]);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        food.setActive(true);
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem item = new StorageItem();
+        item.setStorage(savedStorage);
+        item.setFood(savedFood);
+        item.setCantidad(BigDecimal.valueOf(2000));
+        storageItemRepository.save(item);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-23T12:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "UNIT",
+                        "cantidad": 1
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest());
+
+        assertEquals(0, storageExitRepository.count());
+
+        StorageItem unchangedItem = storageItemRepository
+            .findByStorageIdAndFoodId(
+                savedStorage.getId(),
+                savedFood.getFoodId())
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            BigDecimal.valueOf(2000).compareTo(unchangedItem.getCantidad())
+        );
+    }
+
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        @Test
+    public void testIntegrationExitWithInvalidUnitRollsBackEntireExit()
+            throws Exception {
+
+        Storage savedStorage = null;
+        Food savedChicken = null;
+        Food savedFish = null;
+        StorageItem chickenItem = null;
+        StorageItem fishItem = null;
+
+        try {
+            Storage storage = new Storage();
+            storage.setCapacidadLitros(BigDecimal.valueOf(120));
+            savedStorage = storageRepository.save(storage);
+
+            Food chicken = new Food();
+            chicken.setName("Pollo rollback unidad");
+            chicken.setCategory(FoodCategory.values()[0]);
+            chicken.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+            chicken.setActive(true);
+            savedChicken = foodRepository.save(chicken);
+
+            Food fish = new Food();
+            fish.setName("Pescado rollback unidad");
+            fish.setCategory(FoodCategory.values()[0]);
+            fish.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+            fish.setActive(true);
+            savedFish = foodRepository.save(fish);
+
+            chickenItem = new StorageItem();
+            chickenItem.setStorage(savedStorage);
+            chickenItem.setFood(savedChicken);
+            chickenItem.setCantidad(BigDecimal.valueOf(2000));
+            chickenItem = storageItemRepository.save(chickenItem);
+
+            fishItem = new StorageItem();
+            fishItem.setStorage(savedStorage);
+            fishItem.setFood(savedFish);
+            fishItem.setCantidad(BigDecimal.valueOf(2000));
+            fishItem = storageItemRepository.save(fishItem);
+
+            String requestBody = """
+                {
+                    "movementDateTime": "2026-10-23T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 0.5
+                        },
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "UNIT",
+                            "cantidad": 1
+                        }
+                    ]
+                }
+                """.formatted(
+                    savedStorage.getId(),
+                    savedChicken.getFoodId(),
+                    savedFish.getFoodId()
+                );
+
+            mockMvc.perform(post("/api/v1/storagesexit")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody))
+                .andExpect(status().isBadRequest());
+
+            StorageItem unchangedChicken = storageItemRepository
+                .findByStorageIdAndFoodId(
+                    savedStorage.getId(),
+                    savedChicken.getFoodId())
+                .orElseThrow();
+
+            StorageItem unchangedFish = storageItemRepository
+                .findByStorageIdAndFoodId(
+                    savedStorage.getId(),
+                    savedFish.getFoodId())
+                .orElseThrow();
+
+            assertEquals(
+                0,
+                BigDecimal.valueOf(2000)
+                    .compareTo(unchangedChicken.getCantidad())
+            );
+
+            assertEquals(
+                0,
+                BigDecimal.valueOf(2000)
+                    .compareTo(unchangedFish.getCantidad())
+            );
+
+            final Long storageIdForAssertion = savedStorage.getId();
+
+            assertEquals(
+                0,
+                storageExitRepository.findAll().stream()
+                    .filter(exit ->
+                        storageIdForAssertion.equals(exit.getStorage().getId()))
+                    .count()
+            );
+
+        } finally {
+            if (savedStorage != null) {
+                final Long storageId = savedStorage.getId();
+
+                var exitsToDelete = storageExitRepository.findAll().stream()
+                    .filter(exit ->
+                        storageId.equals(exit.getStorage().getId()))
+                    .toList();
+
+                for (StorageExit exit : exitsToDelete) {
+                    var detailsToDelete =
+                        storageExitDetailRepository.findAll().stream()
+                            .filter(detail ->
+                                detail.getStorageExit() != null
+                                && exit.getStorageExitId().equals(
+                                    detail.getStorageExit().getStorageExitId()))
+                            .toList();
+
+                    storageExitDetailRepository.deleteAll(detailsToDelete);
+                }
+
+                storageExitRepository.deleteAll(exitsToDelete);
+            }
+
+            if (chickenItem != null) {
+                storageItemRepository.delete(chickenItem);
+            }
+
+            if (fishItem != null) {
+                storageItemRepository.delete(fishItem);
+            }
+
+            if (savedChicken != null) {
+                foodRepository.delete(savedChicken);
+            }
+
+            if (savedFish != null) {
+                foodRepository.delete(savedFish);
+            }
+
+            if (savedStorage != null) {
+                storageRepository.delete(savedStorage);
+            }
+        }
+    }
 }
