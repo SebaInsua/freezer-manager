@@ -1,11 +1,13 @@
 package com.freezermanager.service;
 
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.freezermanager.domain.food.Food;
+import com.freezermanager.domain.food.UnitOfMeasure;
 import com.freezermanager.dto.FoodRequest;
 import com.freezermanager.exception.AlreadyExistException;
 import com.freezermanager.exception.NotFoundException;
@@ -17,6 +19,25 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class FoodService {
     private final FoodRepository foodRepository;
+
+    private void validateUnits(Set<UnitOfMeasure> units) {
+        boolean hasWeightUnit = units.contains(UnitOfMeasure.KG)
+                || units.contains(UnitOfMeasure.G);
+
+        boolean hasUnit = units.contains(UnitOfMeasure.UNIT);
+
+        if (hasWeightUnit && hasUnit) {
+            throw new IllegalArgumentException(
+                    "No se pueden combinar unidades de peso con unidades individuales."
+            );
+        }
+    }
+
+    public void validateSelectedUnit(Food food, UnitOfMeasure selectedUnit){
+        if (!food.getUnitOfMeasures().contains(selectedUnit)) {
+            throw new IllegalArgumentException("La unidad seleccionada no es apta para este alimento.");
+        }
+    }
 
     public List<Food> getFoods(Boolean active){
         if(active == null){
@@ -33,6 +54,7 @@ public class FoodService {
         if(foodRepository.existsByNameIgnoreCase(request.name())){
             throw new AlreadyExistException("Ya existe un alimento con el nombre: "+ request.name());
         }
+        validateUnits(request.unitOfMeasures());
         Food foodToSave = new Food();
         foodToSave.setActive(true);
         foodToSave.setName(request.name());
@@ -47,6 +69,7 @@ public class FoodService {
         if(foodRepository.existsByNameIgnoreCaseAndFoodIdNot(request.name(),id)){
             throw new AlreadyExistException("El nombre del alimento ya existe.");
         }
+        validateUnits(request.unitOfMeasures());
         foodToUpdate.setName(request.name());
         foodToUpdate.setCategory(request.category());
         foodToUpdate.setUnitOfMeasures(request.unitOfMeasures());

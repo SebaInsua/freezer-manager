@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.freezermanager.domain.storage.Storage;
@@ -278,5 +279,384 @@ public class StorageExitControllerIntegrationTest {
 
         assertEquals(0, storageExitRepository.count());
     }
+
+        @Test
+    public void testIntegrationExitInGramsAndNormalizeInventory() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo en gramos");
+        food.setCategory(FoodCategory.values()[0]);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG, UnitOfMeasure.G));
+        food.setActive(true);
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem item = new StorageItem();
+        item.setStorage(savedStorage);
+        item.setFood(savedFood);
+        item.setCantidad(BigDecimal.valueOf(2000));
+        storageItemRepository.save(item);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-22T10:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "G",
+                        "cantidad": 500
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(500)))
+            .andExpect(jsonPath("$.details[0].selectedUnit").value("G"));
+
+        StorageItem updatedItem = storageItemRepository
+            .findByStorageIdAndFoodId(savedStorage.getId(), savedFood.getFoodId())
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            BigDecimal.valueOf(1500).compareTo(updatedItem.getCantidad())
+        );
+    }
+
+        @Test
+    public void testIntegrationExitInKilogramsAndNormalizeInventory() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo en kilogramos");
+        food.setCategory(FoodCategory.values()[0]);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG, UnitOfMeasure.G));
+        food.setActive(true);
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem item = new StorageItem();
+        item.setStorage(savedStorage);
+        item.setFood(savedFood);
+        item.setCantidad(BigDecimal.valueOf(2000));
+        storageItemRepository.save(item);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-22T10:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "KG",
+                        "cantidad": 0.5
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(0.5)))
+            .andExpect(jsonPath("$.details[0].selectedUnit").value("KG"));
+
+        StorageItem updatedItem = storageItemRepository
+            .findByStorageIdAndFoodId(savedStorage.getId(), savedFood.getFoodId())
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            BigDecimal.valueOf(1500).compareTo(updatedItem.getCantidad())
+        );
+    }
+
+        @Test
+    public void testIntegrationExitEntireStockAndDeleteStorageItem() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo sin stock");
+        food.setCategory(FoodCategory.values()[0]);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG, UnitOfMeasure.G));
+        food.setActive(true);
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem item = new StorageItem();
+        item.setStorage(savedStorage);
+        item.setFood(savedFood);
+        item.setCantidad(BigDecimal.valueOf(500));
+        storageItemRepository.save(item);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-22T10:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "G",
+                        "cantidad": 500
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(500)))
+            .andExpect(jsonPath("$.details[0].selectedUnit").value("G"));
+
+        assertTrue(
+            storageItemRepository
+                .findByStorageIdAndFoodId(savedStorage.getId(), savedFood.getFoodId())
+                .isEmpty()
+        );
+    }
+
+        @Test
+    public void testIntegrationExitWithInsufficientWeightStock() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo con peso insuficiente");
+        food.setCategory(FoodCategory.values()[0]);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG, UnitOfMeasure.G));
+        food.setActive(true);
+        Food savedFood = foodRepository.save(food);
+
+        StorageItem item = new StorageItem();
+        item.setStorage(savedStorage);
+        item.setFood(savedFood);
+        item.setCantidad(BigDecimal.valueOf(500));
+        storageItemRepository.save(item);
+
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-22T10:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "KG",
+                        "cantidad": 1
+                    }
+                ]
+            }
+            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest());
+
+        StorageItem unchangedItem = storageItemRepository
+            .findByStorageIdAndFoodId(savedStorage.getId(), savedFood.getFoodId())
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            BigDecimal.valueOf(500).compareTo(unchangedItem.getCantidad())
+        );
+
+        assertEquals(0, storageExitRepository.count());
+    }
+
+
+
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+@Test
+public void testIntegrationExitWithMultipleDetailsAndInsufficientStockRollsBack()
+        throws Exception {
+
+    Storage savedStorage = null;
+    Food savedChicken = null;
+    Food savedFish = null;
+    StorageItem chickenItem = null;
+    StorageItem fishItem = null;
+
+    try {
+        // Arrange: crear almacenamiento
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        savedStorage = storageRepository.save(storage);
+
+        // Variable final para usar en las lambdas
+        final Long storageId = savedStorage.getId();
+
+        // Crear alimento: pollo
+        Food chicken = new Food();
+        chicken.setName("Pollo rollback");
+        chicken.setCategory(FoodCategory.values()[0]);
+        chicken.setUnitOfMeasures(
+            Set.of(UnitOfMeasure.KG, UnitOfMeasure.G)
+        );
+        chicken.setActive(true);
+        savedChicken = foodRepository.save(chicken);
+
+        // Crear alimento: pescado
+        Food fish = new Food();
+        fish.setName("Pescado rollback");
+        fish.setCategory(FoodCategory.values()[0]);
+        fish.setUnitOfMeasures(
+            Set.of(UnitOfMeasure.KG, UnitOfMeasure.G)
+        );
+        fish.setActive(true);
+        savedFish = foodRepository.save(fish);
+
+        // Cargar stock inicial
+        chickenItem = new StorageItem();
+        chickenItem.setStorage(savedStorage);
+        chickenItem.setFood(savedChicken);
+        chickenItem.setCantidad(BigDecimal.valueOf(2000));
+        chickenItem = storageItemRepository.save(chickenItem);
+
+        fishItem = new StorageItem();
+        fishItem.setStorage(savedStorage);
+        fishItem.setFood(savedFish);
+        fishItem.setCantidad(BigDecimal.valueOf(300));
+        fishItem = storageItemRepository.save(fishItem);
+
+        // Intentar retirar 500 g de pollo y 500 g de pescado.
+        // El pollo alcanza, pero el pescado no tiene stock suficiente.
+        String requestBody = """
+            {
+                "movementDateTime": "2026-10-22T10:00:00",
+                "storageId": %d,
+                "details": [
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "G",
+                        "cantidad": 500
+                    },
+                    {
+                        "foodId": %d,
+                        "selectedUnit": "G",
+                        "cantidad": 500
+                    }
+                ]
+            }
+            """.formatted(
+                storageId,
+                savedChicken.getFoodId(),
+                savedFish.getFoodId()
+            );
+
+        // Act: la operación debe rechazarse
+        mockMvc.perform(post("/api/v1/storagesexit")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest());
+
+        // Assert: el stock de pollo debe seguir siendo 2000 g
+        StorageItem unchangedChicken = storageItemRepository
+            .findByStorageIdAndFoodId(
+                storageId,
+                savedChicken.getFoodId()
+            )
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            BigDecimal.valueOf(2000)
+                .compareTo(unchangedChicken.getCantidad())
+        );
+
+        // Assert: el stock de pescado debe seguir siendo 300 g
+        StorageItem unchangedFish = storageItemRepository
+            .findByStorageIdAndFoodId(
+                storageId,
+                savedFish.getFoodId()
+            )
+            .orElseThrow();
+
+        assertEquals(
+            0,
+            BigDecimal.valueOf(300)
+                .compareTo(unchangedFish.getCantidad())
+        );
+
+        // Assert: no debe haberse registrado un egreso
+        // para este almacenamiento
+        assertEquals(
+            0,
+            storageExitRepository.findAll().stream()
+                .filter(exit ->
+                    storageId.equals(exit.getStorage().getId())
+                )
+                .count()
+        );
+
+    } finally {
+        // Limpiar los datos creados por este test
+        if (savedStorage != null) {
+            // Variable final para el filtro de limpieza
+            final Long cleanupStorageId = savedStorage.getId();
+
+            // Buscar los egresos asociados al almacenamiento
+            var exitsToDelete = storageExitRepository.findAll().stream()
+                .filter(exit ->
+                    cleanupStorageId.equals(exit.getStorage().getId())
+                )
+                .toList();
+
+            // Eliminar primero los detalles de cada egreso
+            for (StorageExit exit : exitsToDelete) {
+                var detailsToDelete =
+                    storageExitDetailRepository.findAll().stream()
+                        .filter(detail ->
+                            detail.getStorageExit() != null
+                            && exit.getStorageExitId().equals(
+                                detail.getStorageExit().getStorageExitId()
+                            )
+                        )
+                        .toList();
+
+                storageExitDetailRepository.deleteAll(detailsToDelete);
+            }
+
+            // Eliminar los egresos asociados
+            storageExitRepository.deleteAll(exitsToDelete);
+        }
+
+        // Eliminar artículos de stock antes que sus referencias
+        if (chickenItem != null) {
+            storageItemRepository.delete(chickenItem);
+        }
+
+        if (fishItem != null) {
+            storageItemRepository.delete(fishItem);
+        }
+
+        // Eliminar alimentos
+        if (savedChicken != null) {
+            foodRepository.delete(savedChicken);
+        }
+
+        if (savedFish != null) {
+            foodRepository.delete(savedFish);
+        }
+
+        // Eliminar almacenamiento
+        if (savedStorage != null) {
+            storageRepository.delete(savedStorage);
+        }
+    }
+}
 
 }
