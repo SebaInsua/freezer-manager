@@ -25,7 +25,7 @@
 		<developerConnection/>
 		<tag/>
 		<url/>
-	</scm>
+	</scm> 
 	<properties>
 		<java.version>21</java.version>
 	</properties>
@@ -72,6 +72,11 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>3.0.3</version>
 		</dependency>
 	</dependencies>
 

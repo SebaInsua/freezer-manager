@@ -184,7 +184,10 @@ public class FoodControllerIntegrationTest {
                 mockMvc.perform(post("/api/v1/foods")
                                 .contentType("application/json")
                                 .content(requestBody))
-                        .andExpect(status().isBadRequest());
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.message")
+                        .value("El nombre no puede estar vacio."))
+                        .andExpect(jsonPath("$.status").value(400));
         }
 
         @Test
