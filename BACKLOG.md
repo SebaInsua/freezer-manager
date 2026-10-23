@@ -68,11 +68,11 @@ Las tareas siguientes son una propuesta basada en los objetivos del README y en 
 ### FM-035 — Documentar y verificar el contrato actual de la API
 **Prioridad:** alta · **Tipo:** documentación/calidad
 
-- [ ] Revisar los endpoints, métodos HTTP, DTOs, validaciones y códigos de respuesta reales.
-- [ ] Añadir documentación OpenAPI/Swagger si todavía no está configurada.
+- [x] Revisar los endpoints, métodos HTTP, DTOs, validaciones y códigos de respuesta reales.
+- [x] Añadir documentación OpenAPI/Swagger si todavía no está configurada.
 - [ ] Documentar ejemplos de requests y responses, incluidos errores.
-- [ ] Verificar que la documentación coincida con el comportamiento de los tests.
-- [ ] Ejecutar `mvn clean test`.
+- [x] Verificar que la documentación coincida con el comportamiento de los tests.
+- [x] Ejecutar `mvn clean test`.
 
 **Criterio de aceptación:** una persona puede entender y probar los endpoints sin leer la implementación de los servicios.
 
