@@ -1,11 +1,12 @@
 package com.freezermanager.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.storage.Storage;
@@ -20,21 +21,32 @@ import com.freezermanager.repository.StorageExitRepository;
 import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class StorageExitService {
     private final StorageExitRepository storageExitRepository;
-
     private final StorageExitDetailRepository storageExitDetailRepository;
-
     private final StorageRepository storageRepository;
-
     private final FoodService foodService;
-
     private final StorageItemRepository storageItemRepository;
+    private final UnitConversionService unitConversionService;
+    private final StorageExitDetailService storageExitDetailService;
+
+    private void decreaseInventory(Storage storage,Food food,BigDecimal normalizedQuantity){
+        StorageItem storageItem = storageItemRepository.findByStorageIdAndFoodId(storage.getId(), food.getFoodId()).orElseThrow(()-> new IllegalArgumentException("El item que desea actualizar no ha sido encontrado o no existe."));
+        if (storageItem.getCantidad().compareTo(normalizedQuantity) < 0) {
+            throw new IllegalArgumentException("No hay stock suficiente para realizar el retiro");
+        }
+        BigDecimal stockRestante = storageItem.getCantidad().subtract(normalizedQuantity);
+        if (stockRestante.compareTo(BigDecimal.ZERO) == 0) {
+            storageItemRepository.delete(storageItem);
+        } else {
+            storageItem.setCantidad(stockRestante);
+            storageItemRepository.save(storageItem);
+        }
+    }
 
     public List<StorageExit> getAllStorageExits(){
         return storageExitRepository.findAll();
@@ -58,30 +70,11 @@ public class StorageExitService {
         List<StorageExitDetail> listDetails = new ArrayList<>();
         for(StorageExitDetailRequest item : request.details()){
             Food foodToSave = foodService.getActiveFoodById(item.foodId());
-            if(foodToSave.getUnitOfMeasures().contains(item.selectedUnit())){
-                StorageExitDetail detalleAIngresar = new StorageExitDetail();
-                detalleAIngresar.setFood(foodToSave);
-                detalleAIngresar.setSelectedUnit(item.selectedUnit());
-                detalleAIngresar.setCantidad(item.cantidad());
-                detalleAIngresar.setStorageExit(exit);
-                listDetails.add(detalleAIngresar);
-                Optional<StorageItem> storageItem = storageItemRepository.findByStorageIdAndFoodId(request.storageId(), foodToSave.getFoodId());
-                if(storageItem.isPresent()){
-                    StorageItem itemToActualize = storageItem.get();
-                    if (itemToActualize.getCantidad().compareTo(item.cantidad()) >= 0 ){
-                        itemToActualize.setCantidad(
-                        itemToActualize.getCantidad().subtract(item.cantidad())
-                    );
-                    }else{
-                        throw new IllegalArgumentException("No hay stock suficiente para realizar el retiro");
-                    }
-                    storageItemRepository.save(itemToActualize);
-                }else{
-                    throw new IllegalArgumentException("El item que desea actualizar no ha sido encontrado o no existe.");
-                }
-            }else{
-                throw new IllegalArgumentException("La unidad seleccionada no es apta para este alimento.");
-            }
+            foodService.validateSelectedUnit(foodToSave,item.selectedUnit());
+            BigDecimal quantityNormalized = unitConversionService.toInventoryUnit(item.cantidad(),item.selectedUnit());
+            StorageExitDetail detalleAIngresar = storageExitDetailService.buildExitDetail(foodToSave, item, exit);
+            listDetails.add(detalleAIngresar);
+            decreaseInventory(storage, foodToSave, quantityNormalized);
         }
         exit.setStorage(storage);
         exit.setRecordedAt(LocalDateTime.now());

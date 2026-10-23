@@ -45,7 +45,7 @@ public class StorageServiceTest {
         expectedStorage.setId(1L);
         expectedStorage.setMarca("Philco");
         when(storageRepository.findById(expectedStorage.getId())).thenReturn(Optional.of(expectedStorage));
-        Storage result = storageService.getStorage(expectedStorage.getId());
+        Storage result = storageService.getStorageById(expectedStorage.getId());
         assertEquals(expectedStorage, result);
         verify(storageRepository).findById(expectedStorage.getId());
     }
@@ -53,7 +53,7 @@ public class StorageServiceTest {
     @Test
     public void shouldThrowNotFoundExceptionWhenStorageDoesNotExist(){
         when(storageRepository.findById(99L)).thenReturn(Optional.empty());
-        assertThrows(NotFoundException.class, () -> storageService.getStorage(99L));
+        assertThrows(NotFoundException.class, () -> storageService.getStorageById(99L));
         verify(storageRepository).findById(99L);
     }
 }

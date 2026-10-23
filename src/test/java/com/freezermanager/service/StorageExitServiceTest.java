@@ -21,6 +21,7 @@ import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.UnitOfMeasure;
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageExit;
+import com.freezermanager.domain.storage.StorageExitDetail;
 import com.freezermanager.domain.storage.StorageItem;
 import com.freezermanager.dto.StorageExitDetailRequest;
 import com.freezermanager.dto.StorageExitRequest;
@@ -46,6 +47,12 @@ public class StorageExitServiceTest {
 
     @Mock
     private StorageItemRepository storageItemRepository;
+
+    @Mock
+    private UnitConversionService unitConversionService;
+
+    @Mock
+    private StorageExitDetailService storageExitDetailService;
 
     @InjectMocks
     private StorageExitService storageExitService;
@@ -82,7 +89,7 @@ public class StorageExitServiceTest {
         @Test
     public void shouldCreateStorageExitAndSubtractStock() {
         Storage storage = new Storage();
-
+        storage.setId(1L);
         Food food = new Food();
         food.setFoodId(1L);
         food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
@@ -100,9 +107,31 @@ public class StorageExitServiceTest {
         when(storageExitRepository.save(any(StorageExit.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 
+        when(unitConversionService.toInventoryUnit(
+        new BigDecimal("2"), UnitOfMeasure.UNIT))
+        .thenReturn(new BigDecimal("2"));
+
         StorageExitDetailRequest detail = new StorageExitDetailRequest(
             1L, UnitOfMeasure.UNIT, new BigDecimal("2")
         );
+
+        when(storageExitDetailService.buildExitDetail(
+            eq(food),
+            eq(detail),
+            any(StorageExit.class)))
+                .thenAnswer(invocation -> {
+            Food requestedFood = invocation.getArgument(0);
+            StorageExitDetailRequest requestedDetail = invocation.getArgument(1);
+            StorageExit requestedExit = invocation.getArgument(2);
+
+            StorageExitDetail result = new StorageExitDetail();
+            result.setFood(requestedFood);
+            result.setCantidad(requestedDetail.cantidad());
+            result.setSelectedUnit(requestedDetail.selectedUnit());
+            result.setStorageExit(requestedExit);
+
+            return result;
+        });
 
         StorageExitRequest request = new StorageExitRequest(
             LocalDateTime.now(), 1L, List.of(detail)
@@ -121,7 +150,7 @@ public class StorageExitServiceTest {
         @Test
     public void shouldThrowExceptionWhenStockIsInsufficient() {
         Storage storage = new Storage();
-
+        storage.setId(1L);
         Food food = new Food();
         food.setFoodId(1L);
         food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
@@ -135,6 +164,10 @@ public class StorageExitServiceTest {
         when(foodService.getActiveFoodById(1L)).thenReturn(food);
         when(storageItemRepository.findByStorageIdAndFoodId(1L, 1L))
             .thenReturn(Optional.of(storageItem));
+        
+        when(unitConversionService.toInventoryUnit(
+        new BigDecimal("6"), UnitOfMeasure.UNIT))
+        .thenReturn(new BigDecimal("6"));
 
         StorageExitDetailRequest detail = new StorageExitDetailRequest(
             1L, UnitOfMeasure.UNIT, new BigDecimal("6")
@@ -156,7 +189,7 @@ public class StorageExitServiceTest {
         @Test
     public void shouldThrowExceptionWhenStorageItemDoesNotExist() {
         Storage storage = new Storage();
-
+        storage.setId(1L);
         Food food = new Food();
         food.setFoodId(1L);
         food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
@@ -186,7 +219,7 @@ public class StorageExitServiceTest {
         @Test
     public void shouldThrowExceptionWhenUnitIsNotAllowed() {
         Storage storage = new Storage();
-
+        storage.setId(1L);
         Food food = new Food();
         food.setFoodId(1L);
         food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
@@ -214,7 +247,7 @@ public class StorageExitServiceTest {
         @Test
     public void shouldThrowExceptionWhenFoodIsInactive() {
         Storage storage = new Storage();
-
+        storage.setId(1L);
         when(storageRepository.findById(1L))
             .thenReturn(Optional.of(storage));
 

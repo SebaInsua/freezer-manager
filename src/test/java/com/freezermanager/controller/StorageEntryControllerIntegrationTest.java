@@ -179,7 +179,7 @@ public class StorageEntryControllerIntegrationTest {
 
         org.junit.jupiter.api.Assertions.assertEquals(
                 0,
-                savedItem.getCantidad().compareTo(BigDecimal.valueOf(3)));
+                savedItem.getCantidad().compareTo(BigDecimal.valueOf(3000)));
     }
 
         @Test
@@ -196,7 +196,7 @@ public class StorageEntryControllerIntegrationTest {
         StorageItem existingItem = new StorageItem();
         existingItem.setStorage(savedStorage);
         existingItem.setFood(savedFood);
-        existingItem.setCantidad(BigDecimal.valueOf(2));
+        existingItem.setCantidad(BigDecimal.valueOf(2000));
         storageItemRepository.save(existingItem);
 
         String requestBody = """
@@ -226,7 +226,7 @@ public class StorageEntryControllerIntegrationTest {
 
         org.junit.jupiter.api.Assertions.assertEquals(
                 0,
-                updatedItem.getCantidad().compareTo(BigDecimal.valueOf(5)));
+                updatedItem.getCantidad().compareTo(BigDecimal.valueOf(5000)));
     }
 
         @Test
@@ -413,4 +413,68 @@ public class StorageEntryControllerIntegrationTest {
 
         return storageEntryRepository.save(entry);
     }
+
+
+    @Test
+    public void testIntegrationCreateStorageEntryWithDifferentWeightUnits() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Carne prueba KG y G");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG, UnitOfMeasure.G));
+        Food savedFood = foodRepository.save(food);
+
+        String firstRequestBody = """
+                {
+                    "movementDateTime": "2026-10-22T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 2
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                        .contentType("application/json")
+                        .content(firstRequestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(2)))
+                .andExpect(jsonPath("$.details[0].selectedUnit").value("KG"));
+
+        String secondRequestBody = """
+                {
+                    "movementDateTime": "2026-10-22T13:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "G",
+                            "cantidad": 500
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                        .contentType("application/json")
+                        .content(secondRequestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(500)))
+                .andExpect(jsonPath("$.details[0].selectedUnit").value("G"));
+
+        StorageItem savedItem = storageItemRepository
+                .findByStorageIdAndFoodId(savedStorage.getId(), savedFood.getFoodId())
+                .orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                0,
+                savedItem.getCantidad().compareTo(BigDecimal.valueOf(2500)));
+    }
+
 }

@@ -1,8 +1,6 @@
 package com.freezermanager.service;
 
-import com.freezermanager.repository.FoodRepository;
-import com.freezermanager.repository.StorageEntryDetailRepository;
-
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +8,7 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import com.freezermanager.repository.StorageEntryDetailRepository;
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageEntry;
@@ -20,7 +19,6 @@ import com.freezermanager.dto.StorageEntryRequest;
 import com.freezermanager.exception.NotFoundException;
 import com.freezermanager.repository.StorageEntryRepository;
 import com.freezermanager.repository.StorageItemRepository;
-import com.freezermanager.repository.StorageRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +29,27 @@ public class StorageEntryService {
     private final StorageEntryDetailRepository storageEntryDetailRepository;
     private final StorageEntryRepository storageEntryRepository;
     private final FoodService foodService;
-    private final StorageRepository storageRepository;
+    private final StorageService storageService;
+    private final StorageEntryDetailService storageEntryDetailService;
     private final StorageItemRepository storageItemRepository;
+    private final UnitConversionService unitConversionService;
+
+    private void updateInventory(Storage storage,Food food,BigDecimal normalizedQuantity){
+        Optional<StorageItem> storageItem = storageItemRepository.findByStorageIdAndFoodId(storage.getId(),food.getFoodId());
+        if(storageItem.isPresent()){
+            StorageItem itemToActualize = storageItem.get();
+            itemToActualize.setCantidad(
+                itemToActualize.getCantidad().add(normalizedQuantity)
+            );
+            storageItemRepository.save(itemToActualize);
+        }else{
+            StorageItem nuevoItem = new StorageItem();
+            nuevoItem.setStorage(storage);
+            nuevoItem.setFood(food);
+            nuevoItem.setCantidad(normalizedQuantity);
+            storageItemRepository.save(nuevoItem);
+        }
+    }
 
     public List<StorageEntry> getAllStorageEntries(){
         return storageEntryRepository.findAll();
@@ -51,35 +68,16 @@ public class StorageEntryService {
 
     @Transactional
     public StorageEntry createStorageEntry(StorageEntryRequest request){
-        Storage storage = storageRepository.findById(request.storageId()).orElseThrow(()->new NotFoundException("No existe storage con ID: "+ request.storageId()));
+        Storage storage = storageService.getStorageById(request.storageId());
         StorageEntry entry = new StorageEntry();
         List<StorageEntryDetail> listDetails = new ArrayList<>();
         for(StorageEntryDetailRequest item : request.details()){
             Food foodToSave = foodService.getActiveFoodById(item.foodId());
-            if(foodToSave.getUnitOfMeasures().contains(item.selectedUnit())){
-                StorageEntryDetail detalleAIngresar = new StorageEntryDetail();
-                detalleAIngresar.setFood(foodToSave);
-                detalleAIngresar.setSelectedUnit(item.selectedUnit());
-                detalleAIngresar.setCantidad(item.cantidad());
-                detalleAIngresar.setStorageEntry(entry);
-                listDetails.add(detalleAIngresar);
-                Optional<StorageItem> storageItem = storageItemRepository.findByStorageIdAndFoodId(request.storageId(), foodToSave.getFoodId());
-                if(storageItem.isPresent()){
-                    StorageItem itemToActualize = storageItem.get();
-                    itemToActualize.setCantidad(
-                        itemToActualize.getCantidad().add(item.cantidad())
-                    );
-                    storageItemRepository.save(itemToActualize);
-                }else{
-                    StorageItem nuevoItem = new StorageItem();
-                    nuevoItem.setStorage(storage);
-                    nuevoItem.setFood(foodToSave);
-                    nuevoItem.setCantidad(item.cantidad());
-                    storageItemRepository.save(nuevoItem);
-                }
-            }else{
-                throw new IllegalArgumentException("La unidad seleccionada no es apta para este alimento.");
-            }
+            foodService.validateSelectedUnit(foodToSave, item.selectedUnit());
+            BigDecimal quantityNormalized = unitConversionService.toInventoryUnit(item.cantidad(),item.selectedUnit());
+            StorageEntryDetail detalleAIngresar = storageEntryDetailService.buildEntryDetail(foodToSave,item,entry);
+            listDetails.add(detalleAIngresar);
+            updateInventory(storage,foodToSave,quantityNormalized);
         }
         entry.setStorage(storage);
         entry.setRecordedAt(LocalDateTime.now());

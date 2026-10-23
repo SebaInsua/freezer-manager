@@ -19,7 +19,7 @@ public class StorageService {
         return storageRepository.findAll();
     }
 
-    public Storage getStorage(Long id){
+    public Storage getStorageById(Long id){
         return storageRepository.findById(id).orElseThrow(() -> new NotFoundException("No existe un Freezer con el ID: "+id));
     }
 }

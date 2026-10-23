@@ -25,6 +25,6 @@ public class StorageController {
     }
     @GetMapping("/{id}")
     public ResponseEntity<Storage> getStorageById(@PathVariable Long id) {
-        return ResponseEntity.ok(storageService.getStorage(id));
+        return ResponseEntity.ok(storageService.getStorageById(id));
     }
 }
