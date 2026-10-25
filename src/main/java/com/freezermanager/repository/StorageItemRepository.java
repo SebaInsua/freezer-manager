@@ -1,8 +1,11 @@
 package com.freezermanager.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 
 import com.freezermanager.domain.storage.StorageItem;
+
+import jakarta.persistence.LockModeType;
 
 import java.util.Optional;
 
@@ -16,6 +19,17 @@ public interface StorageItemRepository extends JpaRepository<StorageItem,Long>{
     AND si.food.foodId = :foodId
     """)
     Optional<StorageItem> findByStorageIdAndFoodId(
+        @Param("storageId") Long storageId,
+        @Param("foodId") Long foodId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT si FROM StorageItem si
+    WHERE si.storage.id = :storageId
+    AND si.food.foodId = :foodId
+    """)
+    Optional<StorageItem> findByStorageIdAndFoodIdForUpdate(
         @Param("storageId") Long storageId,
         @Param("foodId") Long foodId
     );

@@ -99,10 +99,13 @@ public class StorageExitServiceTest {
         storageItem.setFood(food);
         storageItem.setCantidad(new BigDecimal("5"));
 
-        when(storageRepository.findById(1L)).thenReturn(Optional.of(storage));
+        when(storageRepository.findByIdForUpdate(1L))
+        .thenReturn(Optional.of(storage));
         when(foodService.getActiveFoodById(1L)).thenReturn(food);
-        when(storageItemRepository.findByStorageIdAndFoodId(1L, 1L))
-            .thenReturn(Optional.of(storageItem));
+        when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
+            storage.getId(),
+            food.getFoodId()
+            )).thenReturn(Optional.of(storageItem));
 
         when(storageExitRepository.save(any(StorageExit.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
@@ -160,10 +163,13 @@ public class StorageExitServiceTest {
         storageItem.setFood(food);
         storageItem.setCantidad(new BigDecimal("5"));
 
-        when(storageRepository.findById(1L)).thenReturn(Optional.of(storage));
+        when(storageRepository.findByIdForUpdate(1L))
+        .thenReturn(Optional.of(storage));
         when(foodService.getActiveFoodById(1L)).thenReturn(food);
-        when(storageItemRepository.findByStorageIdAndFoodId(1L, 1L))
-            .thenReturn(Optional.of(storageItem));
+        when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
+            storage.getId(),
+            food.getFoodId()
+            )).thenReturn(Optional.of(storageItem));
         
         when(unitConversionService.toInventoryUnit(
         new BigDecimal("6"), UnitOfMeasure.UNIT))
@@ -194,10 +200,13 @@ public class StorageExitServiceTest {
         food.setFoodId(1L);
         food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
 
-        when(storageRepository.findById(1L)).thenReturn(Optional.of(storage));
+        when(storageRepository.findByIdForUpdate(1L))
+        .thenReturn(Optional.of(storage));
         when(foodService.getActiveFoodById(1L)).thenReturn(food);
-        when(storageItemRepository.findByStorageIdAndFoodId(1L, 1L))
-            .thenReturn(Optional.empty());
+        when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
+                storage.getId(),
+                food.getFoodId()
+        )).thenReturn(Optional.empty());
 
         StorageExitDetailRequest detail = new StorageExitDetailRequest(
             1L, UnitOfMeasure.UNIT, new BigDecimal("2")
@@ -224,7 +233,8 @@ public class StorageExitServiceTest {
         food.setFoodId(1L);
         food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
 
-        when(storageRepository.findById(1L)).thenReturn(Optional.of(storage));
+        when(storageRepository.findByIdForUpdate(1L))
+        .thenReturn(Optional.of(storage));
         when(foodService.getActiveFoodById(1L)).thenReturn(food);
 
         StorageExitDetailRequest detail = new StorageExitDetailRequest(
@@ -248,8 +258,8 @@ public class StorageExitServiceTest {
     public void shouldThrowExceptionWhenFoodIsInactive() {
         Storage storage = new Storage();
         storage.setId(1L);
-        when(storageRepository.findById(1L))
-            .thenReturn(Optional.of(storage));
+        when(storageRepository.findByIdForUpdate(1L))
+        .thenReturn(Optional.of(storage));
 
         when(foodService.getActiveFoodById(1L))
             .thenThrow(new IllegalArgumentException(
