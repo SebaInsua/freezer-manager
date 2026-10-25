@@ -35,7 +35,7 @@ public class StorageExitService {
     private final StorageExitDetailService storageExitDetailService;
 
     private void decreaseInventory(Storage storage,Food food,BigDecimal normalizedQuantity){
-        StorageItem storageItem = storageItemRepository.findByStorageIdAndFoodId(storage.getId(), food.getFoodId()).orElseThrow(()-> new IllegalArgumentException("El item que desea actualizar no ha sido encontrado o no existe."));
+        StorageItem storageItem = storageItemRepository.findByStorageIdAndFoodIdForUpdate(storage.getId(), food.getFoodId()).orElseThrow(()-> new IllegalArgumentException("El item que desea actualizar no ha sido encontrado o no existe."));
         if (storageItem.getCantidad().compareTo(normalizedQuantity) < 0) {
             throw new IllegalArgumentException("No hay stock suficiente para realizar el retiro");
         }
@@ -65,7 +65,10 @@ public class StorageExitService {
 
         @Transactional
     public StorageExit createStorageExit(StorageExitRequest request){
-        Storage storage = storageRepository.findById(request.storageId()).orElseThrow(()->new NotFoundException("No existe storage con ID: "+ request.storageId()));
+        Storage storage = storageRepository.findByIdForUpdate(request.storageId())
+        .orElseThrow(() -> new NotFoundException(
+            "No existe un depósito con el ID: " + request.storageId()
+        ));
         StorageExit exit = new StorageExit();
         List<StorageExitDetail> listDetails = new ArrayList<>();
         for(StorageExitDetailRequest item : request.details()){
