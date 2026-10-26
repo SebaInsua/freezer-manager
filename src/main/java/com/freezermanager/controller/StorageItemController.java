@@ -1,12 +1,14 @@
 package com.freezermanager.controller;
 
-import java.util.List;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 
 import com.freezermanager.domain.storage.StorageItem;
 import com.freezermanager.dto.ErrorResponse;
@@ -45,9 +47,12 @@ public class StorageItemController {
         )
     })
     @GetMapping
-    public ResponseEntity<List<StorageItem>> getAllItems(){
-        return ResponseEntity.ok(storageItemService.getStorageItems());
+    public ResponseEntity<Page<StorageItem>> getAllItems(
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC)
+            Pageable pageable) {
+        return ResponseEntity.ok(storageItemService.getStorageItems(pageable));
     }
+
 
     @Operation(
         summary = "Obtener un elemento del inventario",

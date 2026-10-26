@@ -3,7 +3,6 @@ package com.freezermanager.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +16,12 @@ import com.freezermanager.domain.storage.StorageItem;
 import com.freezermanager.exception.NotFoundException;
 import com.freezermanager.repository.StorageItemRepository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
+
 @ExtendWith(MockitoExtension.class)
 public class StorageItemServiceTest {
     @Mock
@@ -25,19 +30,25 @@ public class StorageItemServiceTest {
     @InjectMocks
     private StorageItemService storageItemService;
 
-    @Test
-    public void shouldFindAllItems(){
-        List<StorageItem> expectedItems = new ArrayList<>();
+
+        @Test
+    public void shouldFindAllItems() {
         StorageItem item = new StorageItem();
         item.setId(1L);
-        expectedItems.add(item);
-        when(storageItemRepository.findAll()).thenReturn(expectedItems);
-        List<StorageItem> result = storageItemService.getStorageItems();
+
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<StorageItem> expectedItems = new PageImpl<>(List.of(item));
+
+        when(storageItemRepository.findAll(pageable)).thenReturn(expectedItems);
+
+        Page<StorageItem> result = storageItemService.getStorageItems(pageable);
+
         assertEquals(expectedItems, result);
-        verify(storageItemRepository).findAll();
+        verify(storageItemRepository).findAll(pageable);
     }
 
-    @Test
+
+        @Test
     public void shouldFindItemById(){
         StorageItem expectedItem = new StorageItem();
         expectedItem.setId(1L);
@@ -47,7 +58,7 @@ public class StorageItemServiceTest {
         verify(storageItemRepository).findById(expectedItem.getId());
     }
 
-    @Test
+        @Test
     public void shouldThrowNotFoundExceptionWhenItemDoesNotExist(){
         when(storageItemRepository.findById(99L)).thenReturn(Optional.empty());
         assertThrows(NotFoundException.class, () -> storageItemService.getStorageItem(99L));

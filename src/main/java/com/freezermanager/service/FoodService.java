@@ -1,10 +1,11 @@
 package com.freezermanager.service;
 
-import java.util.List;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.UnitOfMeasure;
@@ -39,15 +40,21 @@ public class FoodService {
         }
     }
 
-    public List<Food> getFoods(Boolean active){
-        if(active == null){
-            return foodRepository.findAllByActive(true);
-        }
-        return foodRepository.findAllByActive(active);
+    public Page<Food> getFoods(Boolean active, Pageable pageable) {
+        boolean activeFilter = active == null || active;
+        return foodRepository.findAllByActive(activeFilter, pageable);
     }
 
     public Food getFoodById(Long id){
         return foodRepository.findById(id).orElseThrow(() -> new NotFoundException("No existe un alimento con el ID: " + id));
+    }
+
+    public Food getActiveFoodById(Long id){
+        Food alimentoABuscar = foodRepository.findById(id).orElseThrow(()-> new NotFoundException("No existe alimento con el ID: "+id));
+        if(!alimentoABuscar.isActive()){
+            throw new IllegalArgumentException("No se puede ingresar un alimento inactivo");
+        }
+        return alimentoABuscar;
     }
 
     public Food createFood(FoodRequest request){
@@ -82,11 +89,4 @@ public class FoodService {
         foodToDeactivate.setActive(false);
     }
 
-    public Food getActiveFoodById(Long id){
-        Food alimentoABuscar = foodRepository.findById(id).orElseThrow(()-> new NotFoundException("No existe alimento con el ID: "+id));
-        if(!alimentoABuscar.isActive()){
-            throw new IllegalArgumentException("No se puede ingresar un alimento inactivo");
-        }
-        return alimentoABuscar;
-    }
 }

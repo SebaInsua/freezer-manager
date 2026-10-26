@@ -59,10 +59,13 @@ public class StorageExitControllerIntegrationTest {
     private StorageItemRepository storageItemRepository;
 
         @Test
-    public void testIntegrationWhenStoragesExitsItsEmpty() throws Exception{
+    public void testIntegrationWhenStoragesExitsItsEmpty() throws Exception {
         mockMvc.perform(get("/api/v1/storagesexit"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("[]"));
+                .andExpect(jsonPath("$.content", hasSize(0)))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.empty").value(true));
     }
 
         @Test
@@ -90,9 +93,12 @@ public class StorageExitControllerIntegrationTest {
 
         mockMvc.perform(get("/api/v1/storagesexit"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].storage.capacidadLitros", comparesEqualTo(120)))
-                .andExpect(jsonPath("$[1].storage.capacidadLitros", comparesEqualTo(220)));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[0].storage.capacidadLitros",
+                        comparesEqualTo(120)))
+                .andExpect(jsonPath("$.content[1].storage.capacidadLitros",
+                        comparesEqualTo(220)));
     }
 
         @Test
@@ -1009,5 +1015,95 @@ public class StorageExitControllerIntegrationTest {
                 storageRepository.delete(savedStorage);
             }
         }
+    }
+
+        @Test
+    public void testIntegrationStorageExitsPagination() throws Exception {
+        Storage storage1 = new Storage();
+        storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storageRepository.save(storage1);
+
+        Storage storage2 = new Storage();
+        storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storageRepository.save(storage2);
+
+        Storage storage3 = new Storage();
+        storage3.setCapacidadLitros(BigDecimal.valueOf(320));
+        storageRepository.save(storage3);
+
+        StorageExit exit1 = new StorageExit();
+        exit1.setMovementDateTime(LocalDateTime.of(2026, 10, 16, 13, 15));
+        exit1.setRecordedAt(LocalDateTime.now());
+        exit1.setStorage(storage1);
+        storageExitRepository.save(exit1);
+
+        StorageExit exit2 = new StorageExit();
+        exit2.setMovementDateTime(LocalDateTime.of(2026, 10, 17, 13, 15));
+        exit2.setRecordedAt(LocalDateTime.now());
+        exit2.setStorage(storage2);
+        storageExitRepository.save(exit2);
+
+        StorageExit exit3 = new StorageExit();
+        exit3.setMovementDateTime(LocalDateTime.of(2026, 10, 18, 13, 15));
+        exit3.setRecordedAt(LocalDateTime.now());
+        exit3.setStorage(storage3);
+        storageExitRepository.save(exit3);
+
+        mockMvc.perform(get("/api/v1/storagesexit")
+                        .param("page", "0")
+                        .param("size", "2")
+                        .param("sort", "storageExitId,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.content[0].storageExitId")
+                        .value(exit1.getStorageExitId()))
+                .andExpect(jsonPath("$.content[1].storageExitId")
+                        .value(exit2.getStorageExitId()));
+
+        mockMvc.perform(get("/api/v1/storagesexit")
+                        .param("page", "1")
+                        .param("size", "2")
+                        .param("sort", "storageExitId,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.content[0].storageExitId")
+                        .value(exit3.getStorageExitId()));
+    }
+
+        @Test
+    public void testIntegrationStorageExitsDescendingOrder() throws Exception {
+        Storage storage1 = new Storage();
+        storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storageRepository.save(storage1);
+
+        Storage storage2 = new Storage();
+        storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storageRepository.save(storage2);
+
+        StorageExit exit1 = new StorageExit();
+        exit1.setMovementDateTime(LocalDateTime.of(2026, 10, 16, 13, 15));
+        exit1.setRecordedAt(LocalDateTime.now());
+        exit1.setStorage(storage1);
+        storageExitRepository.save(exit1);
+
+        StorageExit exit2 = new StorageExit();
+        exit2.setMovementDateTime(LocalDateTime.of(2026, 10, 17, 13, 15));
+        exit2.setRecordedAt(LocalDateTime.now());
+        exit2.setStorage(storage2);
+        storageExitRepository.save(exit2);
+
+        mockMvc.perform(get("/api/v1/storagesexit")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sort", "storageExitId,desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].storageExitId")
+                        .value(exit2.getStorageExitId()))
+                .andExpect(jsonPath("$.content[1].storageExitId")
+                        .value(exit1.getStorageExitId()));
     }
 }

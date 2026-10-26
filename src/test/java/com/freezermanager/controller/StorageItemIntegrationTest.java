@@ -41,14 +41,19 @@ public class StorageItemIntegrationTest {
     @Autowired
     private FoodRepository foodRepository;
 
-    @Test
-    public void testIntegrationWhenStorageItemItsEmpty() throws Exception{
+
+        @Test
+    public void testIntegrationWhenStorageItemItsEmpty() throws Exception {
         mockMvc.perform(get("/api/v1/storageitems"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("[]"));
+                .andExpect(jsonPath("$.content", hasSize(0)))
+                .andExpect(jsonPath("$.empty").value(true))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
     }
 
-    @Test
+
+        @Test
     public void testIntegrationWhenExistsStoragesItems() throws Exception{
         Storage storage = new Storage();
         Storage storage2 = new Storage();
@@ -82,16 +87,18 @@ public class StorageItemIntegrationTest {
 
         mockMvc.perform(get("/api/v1/storageitems"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].storage.capacidadLitros",comparesEqualTo(120)))
-                .andExpect(jsonPath("$[0].food.name").value("Tomate"))
-                .andExpect(jsonPath("$[0].cantidad",comparesEqualTo(20)))
-                .andExpect(jsonPath("$[1].storage.capacidadLitros",comparesEqualTo(200)))
-                .andExpect(jsonPath("$[1].food.name").value("Pescado"))
-                .andExpect(jsonPath("$[1].cantidad",comparesEqualTo(10)));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].storage.capacidadLitros", comparesEqualTo(120)))
+                .andExpect(jsonPath("$.content[0].food.name").value("Tomate"))
+                .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(20)))
+                .andExpect(jsonPath("$.content[1].storage.capacidadLitros", comparesEqualTo(200)))
+                .andExpect(jsonPath("$.content[1].food.name").value("Pescado"))
+                .andExpect(jsonPath("$.content[1].cantidad", comparesEqualTo(10)))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1));
     }
 
-    @Test
+        @Test
     public void testIntegrationStorageItemById() throws Exception{
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -119,7 +126,7 @@ public class StorageItemIntegrationTest {
                 .andExpect(jsonPath("$.cantidad", comparesEqualTo(20)));
     }
 
-    @Test
+        @Test
     public void testIntegrationWhenStoragesItemsDoesntExists() throws Exception{
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -150,4 +157,136 @@ public class StorageItemIntegrationTest {
                 .andExpect(jsonPath("$.message").value(messageExpected))
                 .andExpect(jsonPath("$.status").value(404));
     }
+
+
+        @Test
+    public void testIntegrationStorageItemsWithPagination() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storageRepository.save(storage);
+
+        Set<UnitOfMeasure> units = new LinkedHashSet<>();
+        units.add(UnitOfMeasure.KG);
+        units.add(UnitOfMeasure.G);
+
+        Food food = new Food();
+        food.setName("Tomate");
+        food.setUnitOfMeasures(units);
+        foodRepository.save(food);
+
+        for (int i = 1; i <= 3; i++) {
+            StorageItem item = new StorageItem();
+
+            Storage storageItem = new Storage();
+            storageItem.setCapacidadLitros(BigDecimal.valueOf(100 + i));
+            storageRepository.save(storageItem);
+
+            Food foodItem = new Food();
+            foodItem.setName("Alimento " + i);
+            foodItem.setUnitOfMeasures(units);
+            foodRepository.save(foodItem);
+
+            item.setStorage(storageItem);
+            item.setFood(foodItem);
+            item.setCantidad(BigDecimal.valueOf(i));
+
+            storageItemRepository.save(item);
+        }
+
+        mockMvc.perform(get("/api/v1/storageitems")
+                .param("page", "0")
+                .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(1)))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(3));
+    }
+
+        @Test
+    public void testIntegrationStorageItemsWithSecondPage() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storageRepository.save(storage);
+
+        Set<UnitOfMeasure> units = new LinkedHashSet<>();
+        units.add(UnitOfMeasure.KG);
+        units.add(UnitOfMeasure.G);
+
+        Food food = new Food();
+        food.setName("Tomate");
+        food.setUnitOfMeasures(units);
+        foodRepository.save(food);
+
+        for (int i = 1; i <= 3; i++) {
+            StorageItem item = new StorageItem();
+
+            Storage storageItem = new Storage();
+            storageItem.setCapacidadLitros(BigDecimal.valueOf(100 + i));
+            storageRepository.save(storageItem);
+
+            Food foodItem = new Food();
+            foodItem.setName("Alimento " + i);
+            foodItem.setUnitOfMeasures(units);
+            foodRepository.save(foodItem);
+
+            item.setStorage(storageItem);
+            item.setFood(foodItem);
+            item.setCantidad(BigDecimal.valueOf(i));
+
+            storageItemRepository.save(item);
+        }
+
+        mockMvc.perform(get("/api/v1/storageitems")
+                .param("page", "1")
+                .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(2)))
+                .andExpect(jsonPath("$.totalElements").value(3));
+    }
+
+        @Test
+    public void testIntegrationStorageItemsWithDescendingSort() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storageRepository.save(storage);
+
+        Set<UnitOfMeasure> units = new LinkedHashSet<>();
+        units.add(UnitOfMeasure.KG);
+        units.add(UnitOfMeasure.G);
+
+        Food food = new Food();
+        food.setName("Tomate");
+        food.setUnitOfMeasures(units);
+        foodRepository.save(food);
+
+        for (int i = 1; i <= 3; i++) {
+            StorageItem item = new StorageItem();
+
+            Storage storageItem = new Storage();
+            storageItem.setCapacidadLitros(BigDecimal.valueOf(100 + i));
+            storageRepository.save(storageItem);
+
+            Food foodItem = new Food();
+            foodItem.setName("Alimento " + i);
+            foodItem.setUnitOfMeasures(units);
+            foodRepository.save(foodItem);
+
+            item.setStorage(storageItem);
+            item.setFood(foodItem);
+            item.setCantidad(BigDecimal.valueOf(i));
+
+            storageItemRepository.save(item);
+        }
+
+        mockMvc.perform(get("/api/v1/storageitems")
+                .param("sort", "id,desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(3)))
+                .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(3)))
+                .andExpect(jsonPath("$.content[1].cantidad", comparesEqualTo(2)))
+                .andExpect(jsonPath("$.content[2].cantidad", comparesEqualTo(1)));
+    }
+
 }

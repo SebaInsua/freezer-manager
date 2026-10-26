@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 
 import com.freezermanager.domain.storage.StorageExit;
 import com.freezermanager.domain.storage.StorageExitDetail;
@@ -47,8 +51,15 @@ public class StorageExitController {
         )
     })
     @GetMapping
-    public ResponseEntity<List<StorageExit>> getAllStoragesExits() {
-        return ResponseEntity.ok(storageExitService.getAllStorageExits());
+    public ResponseEntity<Page<StorageExit>> getAllStoragesExits(
+            @PageableDefault(
+                    size = 10,
+                    sort = "storageExitId",
+                    direction = Sort.Direction.ASC
+            ) Pageable pageable) {
+        return ResponseEntity.ok(
+                storageExitService.getAllStorageExits(pageable)
+        );
     }
 
     @Operation(

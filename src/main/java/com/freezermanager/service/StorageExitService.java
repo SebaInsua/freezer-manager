@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.storage.Storage;
@@ -48,8 +50,8 @@ public class StorageExitService {
         }
     }
 
-    public List<StorageExit> getAllStorageExits(){
-        return storageExitRepository.findAll();
+    public Page<StorageExit> getAllStorageExits(Pageable pageable) {
+        return storageExitRepository.findAll(pageable);
     }
 
     public StorageExit getStorageExitById(Long id){

@@ -2,6 +2,13 @@ package com.freezermanager.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.dto.ErrorResponse;
@@ -13,12 +20,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
-
-import java.util.List;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequiredArgsConstructor
@@ -45,8 +46,13 @@ public class StorageController {
         )
     })
     @GetMapping
-    public ResponseEntity<List<Storage>> getAllStorages() {
-        return ResponseEntity.ok(storageService.getStorages());
+    public ResponseEntity<Page<Storage>> getAllStorages(
+            @PageableDefault(
+                    size = 10,
+                    sort = "id",
+                    direction = Sort.Direction.ASC
+            ) Pageable pageable) {
+        return ResponseEntity.ok(storageService.getStorages(pageable));
     }
 
     @Operation(

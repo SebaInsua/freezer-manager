@@ -1,7 +1,8 @@
+
 package com.freezermanager.service;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.freezermanager.domain.storage.StorageItem;
@@ -16,11 +17,13 @@ public class StorageItemService {
 
     private final StorageItemRepository storageItemRepository;
 
-    public List<StorageItem> getStorageItems(){
-        return storageItemRepository.findAll();
+    public Page<StorageItem> getStorageItems(Pageable pageable) {
+        return storageItemRepository.findAll(pageable);
     }
 
-    public StorageItem getStorageItem(Long id){
-        return storageItemRepository.findById(id).orElseThrow(() -> new NotFoundException("No existe un elemento en el inventario con el ID: " + id));
+    public StorageItem getStorageItem(Long id) {
+        return storageItemRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException(
+                        "No existe un elemento en el inventario con el ID: " + id));
     }
 }
