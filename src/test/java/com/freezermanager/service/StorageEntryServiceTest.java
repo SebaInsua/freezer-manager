@@ -3,7 +3,6 @@ package com.freezermanager.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +16,11 @@ import com.freezermanager.domain.storage.StorageEntry;
 import com.freezermanager.exception.NotFoundException;
 import com.freezermanager.repository.StorageEntryRepository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 @ExtendWith(MockitoExtension.class)
 public class StorageEntryServiceTest {
     @Mock
@@ -26,15 +30,19 @@ public class StorageEntryServiceTest {
     private StorageEntryService storageEntryService;
 
     @Test
-    public void shouldFindAllEntries(){
-        List<StorageEntry> expectedRegister = new ArrayList<>();
+    public void shouldFindAllEntries() {
         StorageEntry register = new StorageEntry();
         register.setStorageEntryId(1L);
-        expectedRegister.add(register);
-        when(storageEntryRepository.findAll()).thenReturn(expectedRegister);
-        List<StorageEntry> result = storageEntryService.getAllStorageEntries();
+
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<StorageEntry> expectedRegister = new PageImpl<>(List.of(register));
+
+        when(storageEntryRepository.findAll(pageable)).thenReturn(expectedRegister);
+
+        Page<StorageEntry> result = storageEntryService.getAllStorageEntries(pageable);
+
         assertEquals(expectedRegister, result);
-        verify(storageEntryRepository).findAll();
+        verify(storageEntryRepository).findAll(pageable);
     }
 
     @Test

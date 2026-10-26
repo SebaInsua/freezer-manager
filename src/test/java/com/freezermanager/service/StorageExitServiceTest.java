@@ -31,6 +31,11 @@ import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
 import com.freezermanager.repository.StorageExitDetailRepository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 @ExtendWith(MockitoExtension.class)
 public class StorageExitServiceTest {
     @Mock
@@ -58,15 +63,27 @@ public class StorageExitServiceTest {
     private StorageExitService storageExitService;
 
     @Test
-    public void shouldFindAllExtractions(){
-        List<StorageExit> expectedExtraction = new ArrayList<>();
+    public void shouldFindAllExtractions() {
         StorageExit extraction = new StorageExit();
         extraction.setStorageExitId(1L);
-        expectedExtraction.add(extraction);
-        when(storageExitRepository.findAll()).thenReturn(expectedExtraction);
-        List<StorageExit> result = storageExitService.getAllStorageExits();
-        assertEquals(expectedExtraction, result);
-        verify(storageExitRepository).findAll();
+
+        List<StorageExit> expectedExtractions = List.of(extraction);
+
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<StorageExit> expectedPage =
+                new PageImpl<>(expectedExtractions, pageable, 1);
+
+        when(storageExitRepository.findAll(pageable))
+                .thenReturn(expectedPage);
+
+        Page<StorageExit> result =
+                storageExitService.getAllStorageExits(pageable);
+
+        assertEquals(expectedPage, result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.getContent().size());
+
+        verify(storageExitRepository).findAll(pageable);
     }
 
     @Test

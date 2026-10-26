@@ -7,6 +7,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 
 import com.freezermanager.domain.storage.StorageEntryDetail;
 import com.freezermanager.dto.ErrorResponse;
@@ -44,8 +48,15 @@ public class StorageEntryDetailController {
         )
     })
     @GetMapping
-    public ResponseEntity<List<StorageEntryDetail>> getAllStoragesDetails() {
-        return ResponseEntity.ok(storageEntryDetailService.getAllStorageEntriesDetails());
+    public ResponseEntity<Page<StorageEntryDetail>> getAllStoragesDetails(
+            @PageableDefault(
+                    size = 10,
+                    sort = "entryDetailId",
+                    direction = Sort.Direction.ASC
+            ) Pageable pageable) {
+        return ResponseEntity.ok(
+                storageEntryDetailService.getAllStorageEntriesDetails(pageable)
+        );
     }
 
     @Operation(

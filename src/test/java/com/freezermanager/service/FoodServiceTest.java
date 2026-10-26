@@ -22,6 +22,11 @@ import com.freezermanager.dto.FoodRequest;
 import com.freezermanager.exception.NotFoundException;
 import com.freezermanager.repository.FoodRepository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 @ExtendWith(MockitoExtension.class)
 public class FoodServiceTest {
     
@@ -34,19 +39,26 @@ public class FoodServiceTest {
     @Test
     public void shouldFindAllFoods() {
         List<Food> expectedFoods = new ArrayList<>();
+
         Food item = new Food();
         item.setFoodId(1L);
         item.setName("Pizza");
         item.setActive(true);
         expectedFoods.add(item);
 
-        when(foodRepository.findAllByActive(true)).thenReturn(expectedFoods);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Food> expectedPage = new PageImpl<>(expectedFoods, pageable, 1);
 
-        List<Food> result = foodService.getFoods(null);
+        when(foodRepository.findAllByActive(true, pageable))
+            .thenReturn(expectedPage);
 
-        assertEquals(expectedFoods, result);
+        Page<Food> result = foodService.getFoods(null, pageable);
 
-        verify(foodRepository).findAllByActive(true);
+        assertEquals(expectedPage, result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Pizza", result.getContent().get(0).getName());
+
+        verify(foodRepository).findAllByActive(true, pageable);
     }
 
     @Test

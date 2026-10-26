@@ -41,10 +41,13 @@ public class FoodControllerIntegrationTest {
         private FoodRepository foodRepository;
 
         @Test
-        public void testIntegrationWhenFoodsItsEmpty() throws Exception{
-                mockMvc.perform(get("/api/v1/foods"))
-                        .andExpect(status().isOk())
-                        .andExpect(content().string("[]"));
+        public void testIntegrationWhenFoodsItsEmpty() throws Exception {
+        mockMvc.perform(get("/api/v1/foods"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(0)))
+                .andExpect(jsonPath("$.empty").value(true))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
         }
 
         @Test
@@ -66,13 +69,16 @@ public class FoodControllerIntegrationTest {
 
                 mockMvc.perform(get("/api/v1/foods"))
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$", hasSize(2)))
-                        .andExpect(jsonPath("$[0].name").value("Tomate"))
-                        .andExpect(jsonPath("$[0].category").value("VEGETABLE"))
-                        .andExpect(jsonPath("$[0].unitOfMeasures",containsInAnyOrder("KG","G")))
-                        .andExpect(jsonPath("$[1].name").value("Matambre"))
-                        .andExpect(jsonPath("$[1].category").value("MEAT"))
-                        .andExpect(jsonPath("$[1].unitOfMeasures",containsInAnyOrder("KG","G")));
+                        .andExpect(jsonPath("$.content", hasSize(2)))
+                        .andExpect(jsonPath("$.content[0].name").value("Matambre"))
+                        .andExpect(jsonPath("$.content[0].category").value("MEAT"))
+                        .andExpect(jsonPath("$.content[0].unitOfMeasures",
+                                containsInAnyOrder("KG", "G")))
+                        .andExpect(jsonPath("$.content[1].name").value("Tomate"))
+                        .andExpect(jsonPath("$.content[1].category").value("VEGETABLE"))
+                        .andExpect(jsonPath("$.content[1].unitOfMeasures",
+                                containsInAnyOrder("KG", "G")))
+                        .andExpect(jsonPath("$.totalElements").value(2));
         }
 
         @Test
@@ -399,14 +405,15 @@ public class FoodControllerIntegrationTest {
 
         @Test
         public void testIntegrationGetFoodsReturnsOnlyActiveFoods() throws Exception {
-        foodRepository.save(createFood("Pollo", true));
-        foodRepository.save(createFood("Pescado", false));
+                foodRepository.save(createFood("Pollo", true));
+                foodRepository.save(createFood("Pescado", false));
 
-        mockMvc.perform(get("/api/v1/foods"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name").value("Pollo"))
-                .andExpect(jsonPath("$[0].active").value(true));
+                mockMvc.perform(get("/api/v1/foods"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.content", hasSize(1)))
+                        .andExpect(jsonPath("$.content[0].name").value("Pollo"))
+                        .andExpect(jsonPath("$.content[0].active").value(true))
+                        .andExpect(jsonPath("$.totalElements").value(1));
         }
 
                 @Test
@@ -418,69 +425,153 @@ public class FoodControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/foods")
                         .param("active", "true"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[*].active",
-                        everyItem(equalTo(true))));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[*].active",
+                        everyItem(equalTo(true))))
+                .andExpect(jsonPath("$.totalElements").value(2));
         }
 
                 @Test
         public void testIntegrationGetFoodsWithActiveFalse() throws Exception {
-        foodRepository.save(createFood("Pollo", true));
-        foodRepository.save(createFood("Pescado", false));
-        foodRepository.save(createFood("Carne", false));
+                foodRepository.save(createFood("Pollo", true));
+                foodRepository.save(createFood("Pescado", false));
+                foodRepository.save(createFood("Carne", false));
+
+                mockMvc.perform(get("/api/v1/foods")
+                                .param("active", "false"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.content", hasSize(2)))
+                        .andExpect(jsonPath("$.content[*].active",
+                                everyItem(equalTo(false))))
+                        .andExpect(jsonPath("$.totalElements").value(2));
+        }
+
+
+                @Test
+        public void testIntegrationUpdateFoodWithIncompatibleUnits() throws Exception {
+                String createBody = """
+                        {
+                        "name": "Harina",
+                        "category": "MEAT",
+                        "unitOfMeasures": ["KG"]
+                        }
+                        """;
+
+                MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                                .contentType("application/json")
+                                .content(createBody))
+                        .andExpect(status().isCreated())
+                        .andReturn();
+
+                Long foodId = ((Number) JsonPath.read(
+                        result.getResponse().getContentAsString(), "$.foodId")).longValue();
+
+                String updateBody = """
+                        {
+                        "name": "Harina",
+                        "category": "MEAT",
+                        "unitOfMeasures": ["KG", "UNIT"]
+                        }
+                        """;
+
+                mockMvc.perform(put("/api/v1/foods/" + foodId)
+                                .contentType("application/json")
+                                .content(updateBody))
+                        .andExpect(status().isBadRequest());
+
+                Food foodAfterUpdate = foodRepository.findById(foodId).orElseThrow();
+                assertEquals(Set.of(UnitOfMeasure.KG), foodAfterUpdate.getUnitOfMeasures());
+        }
+
+
+                @Test
+        public void testIntegrationGetFoodsWithPagination() throws Exception {
+        foodRepository.save(createFood("Arroz", true));
+        foodRepository.save(createFood("Banana", true));
+        foodRepository.save(createFood("Carne", true));
+        foodRepository.save(createFood("Durazno", true));
+        foodRepository.save(createFood("Espinaca", true));
 
         mockMvc.perform(get("/api/v1/foods")
-                        .param("active", "false"))
+                        .param("page", "0")
+                        .param("size", "2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[*].active",
-                        everyItem(equalTo(false))));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].name").value("Arroz"))
+                .andExpect(jsonPath("$.content[1].name").value("Banana"))
+                .andExpect(jsonPath("$.number").value(0))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(5))
+                .andExpect(jsonPath("$.totalPages").value(3));
         }
+
+                @Test
+        public void testIntegrationGetFoodsWithSecondPage() throws Exception {
+        foodRepository.save(createFood("Arroz", true));
+        foodRepository.save(createFood("Banana", true));
+        foodRepository.save(createFood("Carne", true));
+        foodRepository.save(createFood("Durazno", true));
+        foodRepository.save(createFood("Espinaca", true));
+
+        mockMvc.perform(get("/api/v1/foods")
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].name").value("Carne"))
+                .andExpect(jsonPath("$.content[1].name").value("Durazno"))
+                .andExpect(jsonPath("$.number").value(1))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(5))
+                .andExpect(jsonPath("$.totalPages").value(3));
+        }
+
+                @Test
+        public void testIntegrationGetFoodsWithDescendingSort() throws Exception {
+        foodRepository.save(createFood("Arroz", true));
+        foodRepository.save(createFood("Banana", true));
+        foodRepository.save(createFood("Carne", true));
+
+        mockMvc.perform(get("/api/v1/foods")
+                        .param("sort", "name,desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(3)))
+                .andExpect(jsonPath("$.content[0].name").value("Carne"))
+                .andExpect(jsonPath("$.content[1].name").value("Banana"))
+                .andExpect(jsonPath("$.content[2].name").value("Arroz"));
+        }
+
+                @Test
+        public void testIntegrationGetInactiveFoodsWithPagination() throws Exception {
+        foodRepository.save(createFood("Arroz", false));
+        foodRepository.save(createFood("Banana", false));
+        foodRepository.save(createFood("Carne", false));
+        foodRepository.save(createFood("Durazno", false));
+        foodRepository.save(createFood("Espinaca", true));
+
+        mockMvc.perform(get("/api/v1/foods")
+                        .param("active", "false")
+                        .param("page", "0")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[*].active",
+                        everyItem(equalTo(false))))
+                .andExpect(jsonPath("$.content[0].name").value("Arroz"))
+                .andExpect(jsonPath("$.content[1].name").value("Banana"))
+                .andExpect(jsonPath("$.number").value(0))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(4))
+                .andExpect(jsonPath("$.totalPages").value(2));
+        }
+
 
         private Food createFood(String name, boolean active) {
-        Food food = new Food();
-        food.setName(name);
-        food.setCategory(FoodCategory.MEAT);
-        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
-        food.setActive(active);
-        return food;
+                Food food = new Food();
+                food.setName(name);
+                food.setCategory(FoodCategory.MEAT);
+                food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+                food.setActive(active);
+                return food;
         }
-
-
-        @Test
-        public void testIntegrationUpdateFoodWithIncompatibleUnits() throws Exception {
-        String createBody = """
-                {
-                "name": "Harina",
-                "category": "MEAT",
-                "unitOfMeasures": ["KG"]
-                }
-                """;
-
-        MvcResult result = mockMvc.perform(post("/api/v1/foods")
-                        .contentType("application/json")
-                        .content(createBody))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        Long foodId = ((Number) JsonPath.read(
-                result.getResponse().getContentAsString(), "$.foodId")).longValue();
-
-        String updateBody = """
-                {
-                "name": "Harina",
-                "category": "MEAT",
-                "unitOfMeasures": ["KG", "UNIT"]
-                }
-                """;
-
-        mockMvc.perform(put("/api/v1/foods/" + foodId)
-                        .contentType("application/json")
-                        .content(updateBody))
-                .andExpect(status().isBadRequest());
-
-        Food foodAfterUpdate = foodRepository.findById(foodId).orElseThrow();
-        assertEquals(Set.of(UnitOfMeasure.KG), foodAfterUpdate.getUnitOfMeasures());
-        }
-
 }

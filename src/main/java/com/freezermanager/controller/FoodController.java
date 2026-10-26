@@ -1,7 +1,9 @@
 package com.freezermanager.controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,7 +43,7 @@ public class FoodController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Lista de alimentos obtenida correctamente"),
         @ApiResponse(
-            responseCode = "500", 
+            responseCode = "500",
             description = "Error interno del servidor",
             content = @Content(
                 mediaType = "application/json",
@@ -53,8 +55,15 @@ public class FoodController {
         )
     })
     @GetMapping
-    public ResponseEntity<List<Food>> getFoods(@RequestParam(required = false) Boolean active){
-        return ResponseEntity.ok(foodService.getFoods(active));
+    public ResponseEntity<Page<Food>> getFoods(
+        @RequestParam(required = false) Boolean active,
+        @PageableDefault(
+            size = 10,sort = "name",
+            direction = Sort.Direction.ASC
+        )
+        Pageable pageable
+        ){
+        return ResponseEntity.ok(foodService.getFoods(active,pageable));
     }
 
     @Operation(
@@ -71,7 +80,7 @@ public class FoodController {
             schema = @Schema(implementation = ErrorResponse.class)
         )),
         @ApiResponse(
-            responseCode = "500", 
+            responseCode = "500",
             description = "Error interno del servidor",
             content = @Content(
                 mediaType = "application/json",
@@ -98,14 +107,14 @@ public class FoodController {
                 schema = @Schema(implementation = ErrorResponse.class)
             )),
         @ApiResponse(
-            responseCode = "409", 
+            responseCode = "409",
             description = "Ya existe un alimento con ese nombre",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)
             )),
         @ApiResponse(
-            responseCode = "500", 
+            responseCode = "500",
             description = "Error interno del servidor",
             content = @Content(
                 mediaType = "application/json",
@@ -124,28 +133,28 @@ public class FoodController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Alimento actualizado correctamente"),
         @ApiResponse(
-            responseCode = "400", 
+            responseCode = "400",
             description = "Los datos enviados no son válidos",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)
             )),
         @ApiResponse(
-            responseCode = "404", 
+            responseCode = "404",
             description = "No existe un alimento con ese identificador",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)
             )),
         @ApiResponse(
-            responseCode = "409", 
+            responseCode = "409",
             description = "Ya existe un alimento con ese nombre",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)
             )),
         @ApiResponse(
-            responseCode = "500", 
+            responseCode = "500",
             description = "Error interno del servidor",
             content = @Content(
                 mediaType = "application/json",
@@ -164,14 +173,14 @@ public class FoodController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Alimento desactivado correctamente"),
         @ApiResponse(
-            responseCode = "404", 
+            responseCode = "404",
             description = "No existe un alimento con ese identificador",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)
             )),
         @ApiResponse(
-            responseCode = "500", 
+            responseCode = "500",
             description = "Error interno del servidor",
             content = @Content(
                 mediaType = "application/json",

@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.freezermanager.repository.StorageEntryDetailRepository;
 import com.freezermanager.domain.food.Food;
@@ -51,8 +53,8 @@ public class StorageEntryService {
         }
     }
 
-    public List<StorageEntry> getAllStorageEntries(){
-        return storageEntryRepository.findAll();
+    public Page<StorageEntry> getAllStorageEntries(Pageable pageable) {
+        return storageEntryRepository.findAll(pageable);
     }
 
     public StorageEntry getStorageEntryById(Long id){

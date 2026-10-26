@@ -50,11 +50,14 @@ public class StorageEntryControllerIntegrationTest {
     @Autowired
     private FoodRepository foodRepository;
 
-    @Test
-    public void testIntegrationWhenStoragesEntriesItsEmpty() throws Exception{
+        @Test
+    public void testIntegrationWhenStoragesEntriesItsEmpty() throws Exception {
         mockMvc.perform(get("/api/v1/storagesentry"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("[]"));
+                .andExpect(jsonPath("$.content", hasSize(0)))
+                .andExpect(jsonPath("$.empty").value(true))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
     }
 
         @Test
@@ -72,9 +75,13 @@ public class StorageEntryControllerIntegrationTest {
 
         mockMvc.perform(get("/api/v1/storagesentry"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].storage.capacidadLitros", comparesEqualTo(120)))
-                .andExpect(jsonPath("$[1].storage.capacidadLitros", comparesEqualTo(220)));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].storage.capacidadLitros",
+                        comparesEqualTo(120)))
+                .andExpect(jsonPath("$.content[1].storage.capacidadLitros",
+                        comparesEqualTo(220)))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1));
     }
 
         @Test
@@ -590,4 +597,82 @@ public class StorageEntryControllerIntegrationTest {
                 savedFood.getFoodId())
             .isEmpty());
     }
+
+
+        @Test
+    public void testIntegrationStorageEntriesWithPagination() throws Exception {
+        Storage storage1 = new Storage();
+        storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storageRepository.save(storage1);
+
+        Storage storage2 = new Storage();
+        storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storageRepository.save(storage2);
+
+        Storage storage3 = new Storage();
+        storage3.setCapacidadLitros(BigDecimal.valueOf(320));
+        storageRepository.save(storage3);
+
+        createEntryWithDetail(storage1, "Tomate");
+        createEntryWithDetail(storage2, "Pollo");
+        createEntryWithDetail(storage3, "Carne");
+
+        mockMvc.perform(get("/api/v1/storagesentry")
+                .param("page", "0")
+                .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+    }
+
+        @Test
+    public void testIntegrationStorageEntriesWithSecondPage() throws Exception {
+        Storage storage1 = new Storage();
+        storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storageRepository.save(storage1);
+
+        Storage storage2 = new Storage();
+        storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storageRepository.save(storage2);
+
+        Storage storage3 = new Storage();
+        storage3.setCapacidadLitros(BigDecimal.valueOf(320));
+        storageRepository.save(storage3);
+
+        createEntryWithDetail(storage1, "Tomate");
+        createEntryWithDetail(storage2, "Pollo");
+        createEntryWithDetail(storage3, "Carne");
+
+        mockMvc.perform(get("/api/v1/storagesentry")
+                .param("page", "1")
+                .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+    }
+
+        @Test
+    public void testIntegrationStorageEntriesWithDescendingSort() throws Exception {
+        Storage storage1 = new Storage();
+        storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storageRepository.save(storage1);
+
+        Storage storage2 = new Storage();
+        storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storageRepository.save(storage2);
+
+        createEntryWithDetail(storage1, "Tomate");
+        createEntryWithDetail(storage2, "Pollo");
+
+        mockMvc.perform(get("/api/v1/storagesentry")
+                .param("sort", "storageEntryId,desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].storageEntryId")
+                        .value(greaterThan(
+                                (Integer) 0)));
+    }
+
 }

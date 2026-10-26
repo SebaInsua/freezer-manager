@@ -1,7 +1,5 @@
 package com.freezermanager.service;
 
-import java.util.List;
-
 import org.springframework.stereotype.Service;
 
 import com.freezermanager.domain.food.Food;
@@ -10,6 +8,9 @@ import com.freezermanager.domain.storage.StorageEntryDetail;
 import com.freezermanager.dto.StorageEntryDetailRequest;
 import com.freezermanager.exception.NotFoundException;
 import com.freezermanager.repository.StorageEntryDetailRepository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,8 +28,8 @@ public class StorageEntryDetailService {
             return detalleAIngresar;
     }
 
-    public List<StorageEntryDetail> getAllStorageEntriesDetails(){
-        return storageEntryDetailRepository.findAll();
+    public Page<StorageEntryDetail> getAllStorageEntriesDetails(Pageable pageable) {
+        return storageEntryDetailRepository.findAll(pageable);
     }
 
     public StorageEntryDetail getStorageEntryDetailById(Long id){
