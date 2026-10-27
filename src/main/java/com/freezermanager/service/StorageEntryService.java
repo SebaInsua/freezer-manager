@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.freezermanager.repository.StorageEntryDetailRepository;
 import com.freezermanager.domain.food.Food;
+import com.freezermanager.domain.storage.ExpirationDateType;
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageEntry;
 import com.freezermanager.domain.storage.StorageEntryDetail;
@@ -105,6 +106,20 @@ public class StorageEntryService {
 
             StorageBatch batch = new StorageBatch();
             batch.setStorageEntryDetail(detail);
+            if (item.expirationDate() != null) {
+                batch.setExpirationDate(item.expirationDate());
+                batch.setExpirationDateType(ExpirationDateType.ACTUAL);
+            } else if (foodToSave.getDefaultShelfLifeDays() != null) {
+                batch.setExpirationDate(
+                    request.movementDateTime()
+                        .toLocalDate()
+                        .plusDays(foodToSave.getDefaultShelfLifeDays())
+                );
+                batch.setExpirationDateType(ExpirationDateType.ESTIMATED);
+            } else {
+                batch.setExpirationDate(null);
+                batch.setExpirationDateType(ExpirationDateType.UNDEFINED);
+            }
             batch.setInitialQuantity(quantityNormalized);
             batch.setAvailableQuantity(quantityNormalized);
 

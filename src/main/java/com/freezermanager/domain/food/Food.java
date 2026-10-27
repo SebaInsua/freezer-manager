@@ -16,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -46,4 +47,8 @@ public class Food {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    @Positive(message = "La vida útil predeterminada debe ser mayor que cero.")
+    @Column(name = "default_shelf_life_days")
+    private Integer defaultShelfLifeDays;
 }

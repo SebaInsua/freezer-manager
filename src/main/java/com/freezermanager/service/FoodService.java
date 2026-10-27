@@ -67,6 +67,7 @@ public class FoodService {
         foodToSave.setName(request.name());
         foodToSave.setCategory(request.category());
         foodToSave.setUnitOfMeasures(request.unitOfMeasures());
+        foodToSave.setDefaultShelfLifeDays(request.defaultShelfLifeDays());
         return foodRepository.save(foodToSave);
     }
 
@@ -80,6 +81,7 @@ public class FoodService {
         foodToUpdate.setName(request.name());
         foodToUpdate.setCategory(request.category());
         foodToUpdate.setUnitOfMeasures(request.unitOfMeasures());
+        foodToUpdate.setDefaultShelfLifeDays(request.defaultShelfLifeDays());
         return foodToUpdate;
     }
 

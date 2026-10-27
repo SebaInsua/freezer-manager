@@ -2,6 +2,7 @@
 package com.freezermanager.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import com.freezermanager.domain.food.UnitOfMeasure;
 
@@ -17,5 +18,7 @@ public record StorageEntryDetailRequest(
 
     @NotNull(message = "La cantidad es obligatoria")
     @Positive(message = "La cantidad debe ser mayor que cero")
-    BigDecimal cantidad
+    BigDecimal cantidad,
+
+    LocalDate expirationDate
 ) {}

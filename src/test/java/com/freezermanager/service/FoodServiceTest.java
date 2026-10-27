@@ -85,7 +85,8 @@ public class FoodServiceTest {
         FoodRequest request = new FoodRequest(
             "Harina",
             FoodCategory.values()[0],
-            Set.of(UnitOfMeasure.KG, UnitOfMeasure.G)
+            Set.of(UnitOfMeasure.KG, UnitOfMeasure.G),
+            null
         );
 
         when(foodRepository.existsByNameIgnoreCase("Harina")).thenReturn(false);
@@ -103,7 +104,8 @@ public class FoodServiceTest {
         FoodRequest request = new FoodRequest(
             "Harina",
             FoodCategory.values()[0],
-            Set.of(UnitOfMeasure.KG, UnitOfMeasure.UNIT)
+            Set.of(UnitOfMeasure.KG, UnitOfMeasure.UNIT),
+            null
         );
 
         when(foodRepository.existsByNameIgnoreCase("Harina")).thenReturn(false);
