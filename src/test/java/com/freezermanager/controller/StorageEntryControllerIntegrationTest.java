@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,8 @@ import com.freezermanager.repository.FoodRepository;
 import com.freezermanager.repository.StorageEntryRepository;
 import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
+import com.freezermanager.domain.storage.StorageBatch;
+import com.freezermanager.repository.StorageBatchRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -49,6 +52,9 @@ public class StorageEntryControllerIntegrationTest {
 
     @Autowired
     private FoodRepository foodRepository;
+
+    @Autowired
+    private StorageBatchRepository storageBatchRepository;
 
         @Test
     public void testIntegrationWhenStoragesEntriesItsEmpty() throws Exception {
@@ -184,6 +190,26 @@ public class StorageEntryControllerIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(
                 0,
                 savedItem.getCantidad().compareTo(BigDecimal.valueOf(3000)));
+        List<StorageBatch> batches = storageBatchRepository.findAll();
+        assertEquals(1, batches.size());
+
+        StorageBatch savedBatch = batches.get(0);
+
+        assertEquals(
+            0,
+            savedBatch.getInitialQuantity().compareTo(BigDecimal.valueOf(3000))
+        );
+
+        assertEquals(
+            0,
+            savedBatch.getAvailableQuantity().compareTo(BigDecimal.valueOf(3000))
+        );
+
+        assertEquals(
+            savedBatch.getStorageEntryDetail().getEntryDetailId(),
+            storageEntryRepository.findAll().get(0)
+                .getDetails().get(0).getEntryDetailId()
+        );
     }
 
         @Test
@@ -366,6 +392,8 @@ public class StorageEntryControllerIntegrationTest {
                         savedActiveFood.getFoodId(),
                         savedInactiveFood.getFoodId());
 
+        long batchesBefore = storageBatchRepository.count();
+
         mockMvc.perform(post("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(requestBody))
@@ -373,6 +401,12 @@ public class StorageEntryControllerIntegrationTest {
 
         org.junit.jupiter.api.Assertions.assertEquals(
                 0, storageEntryRepository.count());
+
+        assertEquals(
+            batchesBefore,
+            storageBatchRepository.count(),
+            "No deben persistirse lotes si la entrada completa se revierte"
+        );
 
         org.junit.jupiter.api.Assertions.assertTrue(
                 storageItemRepository.findByStorageIdAndFoodId(

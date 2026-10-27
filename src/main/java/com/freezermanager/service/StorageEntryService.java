@@ -21,6 +21,8 @@ import com.freezermanager.repository.StorageEntryRepository;
 import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
 import com.freezermanager.domain.storage.StorageItem;
+import com.freezermanager.domain.storage.StorageBatch;
+import com.freezermanager.repository.StorageBatchRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class StorageEntryService {
     private final StorageItemRepository storageItemRepository;
     private final UnitConversionService unitConversionService;
     private final StorageRepository storageRepository;
+    private final StorageBatchRepository storageBatchRepository;
 
     private void updateInventory(Storage storage, Food food, BigDecimal normalizedQuantity) {
         var storageItem = storageItemRepository
@@ -68,28 +71,58 @@ public class StorageEntryService {
         return storageEntryDetailRepository.findDetailsByStorageEntryId(id);
     }
 
+
     @Transactional
-    public StorageEntry createStorageEntry(StorageEntryRequest request){
+    public StorageEntry createStorageEntry(StorageEntryRequest request) {
         Storage storage = storageRepository.findByIdForUpdate(request.storageId())
-        .orElseThrow(() -> new NotFoundException(
-            "No existe un depósito con el ID: " + request.storageId()
-        ));
+            .orElseThrow(() -> new NotFoundException(
+                "No existe un depósito con el ID: " + request.storageId()
+            ));
+
         StorageEntry entry = new StorageEntry();
         List<StorageEntryDetail> listDetails = new ArrayList<>();
-        for(StorageEntryDetailRequest item : request.details()){
+        List<StorageBatch> batches = new ArrayList<>();
+
+        for (StorageEntryDetailRequest item : request.details()) {
             Food foodToSave = foodService.getActiveFoodById(item.foodId());
+
             foodService.validateSelectedUnit(foodToSave, item.selectedUnit());
-            BigDecimal quantityNormalized = unitConversionService.toInventoryUnit(item.cantidad(),item.selectedUnit());
-            StorageEntryDetail detalleAIngresar = storageEntryDetailService.buildEntryDetail(foodToSave,item,entry);
-            listDetails.add(detalleAIngresar);
-            updateInventory(storage,foodToSave,quantityNormalized);
+
+            BigDecimal quantityNormalized =
+                unitConversionService.toInventoryUnit(
+                    item.cantidad(),
+                    item.selectedUnit()
+                );
+
+            StorageEntryDetail detail =
+                storageEntryDetailService.buildEntryDetail(
+                    foodToSave,
+                    item,
+                    entry
+                );
+
+            listDetails.add(detail);
+
+            StorageBatch batch = new StorageBatch();
+            batch.setStorageEntryDetail(detail);
+            batch.setInitialQuantity(quantityNormalized);
+            batch.setAvailableQuantity(quantityNormalized);
+
+            batches.add(batch);
+
+            updateInventory(storage, foodToSave, quantityNormalized);
         }
+
         entry.setStorage(storage);
         entry.setRecordedAt(LocalDateTime.now());
         entry.setMovementDateTime(request.movementDateTime());
         entry.setDetails(listDetails);
 
-        storageEntryRepository.save(entry);
-        return entry;
+        StorageEntry savedEntry = storageEntryRepository.save(entry);
+
+        storageBatchRepository.saveAll(batches);
+
+        return savedEntry;
     }
+
 }

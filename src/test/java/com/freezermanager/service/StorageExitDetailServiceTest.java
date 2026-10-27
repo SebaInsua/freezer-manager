@@ -31,10 +31,10 @@ class StorageExitDetailServiceTest {
 
         StorageExitDetailRequest request = new StorageExitDetailRequest(
             1L,
+            10L,
             UnitOfMeasure.UNIT,
             new BigDecimal("2")
         );
-
         StorageExitDetail result =
             storageExitDetailService.buildExitDetail(food, request, exit);
 

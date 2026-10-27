@@ -22,6 +22,9 @@ import com.freezermanager.repository.StorageExitDetailRepository;
 import com.freezermanager.repository.StorageExitRepository;
 import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
+import com.freezermanager.domain.storage.StorageBatch;
+import com.freezermanager.domain.storage.StorageEntryDetail;
+import com.freezermanager.repository.StorageBatchRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,13 +38,67 @@ public class StorageExitService {
     private final StorageItemRepository storageItemRepository;
     private final UnitConversionService unitConversionService;
     private final StorageExitDetailService storageExitDetailService;
+    private final StorageBatchRepository storageBatchRepository;
 
-    private void decreaseInventory(Storage storage,Food food,BigDecimal normalizedQuantity){
-        StorageItem storageItem = storageItemRepository.findByStorageIdAndFoodIdForUpdate(storage.getId(), food.getFoodId()).orElseThrow(()-> new IllegalArgumentException("El item que desea actualizar no ha sido encontrado o no existe."));
-        if (storageItem.getCantidad().compareTo(normalizedQuantity) < 0) {
-            throw new IllegalArgumentException("No hay stock suficiente para realizar el retiro");
+    private void decreaseInventory(
+            Storage storage,
+            Food food,
+            StorageBatch batch,
+            BigDecimal normalizedQuantity) {
+
+        if (!batch.isActive()) {
+            throw new IllegalArgumentException(
+                "El lote seleccionado está inactivo"
+            );
         }
-        BigDecimal stockRestante = storageItem.getCantidad().subtract(normalizedQuantity);
+
+        StorageEntryDetail entryDetail = batch.getStorageEntryDetail();
+
+        if (!entryDetail.getStorageEntry().getStorage().getId()
+                .equals(storage.getId())) {
+            throw new IllegalArgumentException(
+                "El lote seleccionado no pertenece al depósito indicado"
+            );
+        }
+
+        if (!entryDetail.getFood().getFoodId().equals(food.getFoodId())) {
+            throw new IllegalArgumentException(
+                "El lote seleccionado no corresponde al alimento indicado"
+            );
+        }
+
+        if (batch.getAvailableQuantity().compareTo(normalizedQuantity) < 0) {
+            throw new IllegalArgumentException(
+                "No hay stock suficiente en el lote seleccionado"
+            );
+        }
+
+        StorageItem storageItem = storageItemRepository
+            .findByStorageIdAndFoodIdForUpdate(storage.getId(), food.getFoodId())
+            .orElseThrow(() -> new IllegalArgumentException(
+                "El item que desea actualizar no ha sido encontrado o no existe."
+            ));
+
+        if (storageItem.getCantidad().compareTo(normalizedQuantity) < 0) {
+            throw new IllegalArgumentException(
+                "No hay stock suficiente para realizar el retiro"
+            );
+        }
+
+        BigDecimal batchRemaining = batch.getAvailableQuantity()
+            .subtract(normalizedQuantity);
+
+        batch.setAvailableQuantity(batchRemaining);
+
+        if (batchRemaining.compareTo(BigDecimal.ZERO) == 0) {
+            batch.setActive(false);
+        }
+
+        storageBatchRepository.save(batch);
+
+        BigDecimal stockRestante = storageItem.getCantidad()
+            .subtract(normalizedQuantity);
+
         if (stockRestante.compareTo(BigDecimal.ZERO) == 0) {
             storageItemRepository.delete(storageItem);
         } else {
@@ -77,9 +134,19 @@ public class StorageExitService {
             Food foodToSave = foodService.getActiveFoodById(item.foodId());
             foodService.validateSelectedUnit(foodToSave,item.selectedUnit());
             BigDecimal quantityNormalized = unitConversionService.toInventoryUnit(item.cantidad(),item.selectedUnit());
+            StorageBatch batch = storageBatchRepository.findByIdForUpdate(item.batchId())
+            .orElseThrow(() -> new NotFoundException(
+                "No existe un lote con el ID: " + item.batchId()
+            ));
             StorageExitDetail detalleAIngresar = storageExitDetailService.buildExitDetail(foodToSave, item, exit);
+            detalleAIngresar.setStorageBatch(batch);
             listDetails.add(detalleAIngresar);
-            decreaseInventory(storage, foodToSave, quantityNormalized);
+            decreaseInventory(
+                storage,
+                foodToSave,
+                batch,
+                quantityNormalized
+            );
         }
         exit.setStorage(storage);
         exit.setRecordedAt(LocalDateTime.now());
