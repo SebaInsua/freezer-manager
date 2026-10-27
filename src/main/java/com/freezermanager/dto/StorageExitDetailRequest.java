@@ -1,3 +1,4 @@
+
 package com.freezermanager.dto;
 
 import java.math.BigDecimal;
@@ -10,6 +11,10 @@ import jakarta.validation.constraints.Positive;
 public record StorageExitDetailRequest(
     @NotNull(message = "El alimento es obligatorio")
     Long foodId,
+
+    @NotNull(message = "El lote es obligatorio")
+    @Positive(message = "El ID del lote debe ser mayor que cero")
+    Long batchId,
 
     @NotNull(message = "La unidad seleccionada es obligatoria")
     UnitOfMeasure selectedUnit,

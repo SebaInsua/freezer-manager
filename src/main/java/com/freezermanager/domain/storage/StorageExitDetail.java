@@ -53,4 +53,9 @@ public class StorageExitDetail {
     @NotNull
     @JsonBackReference
     private StorageExit storageExit;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "batch_id", nullable = false)
+    @NotNull
+    private StorageBatch storageBatch;
 }
