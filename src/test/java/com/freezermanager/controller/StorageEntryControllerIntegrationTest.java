@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.UnitOfMeasure;
+import com.freezermanager.domain.storage.ExpirationDateType;
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageEntry;
 import com.freezermanager.domain.storage.StorageEntryDetail;
@@ -210,6 +212,85 @@ public class StorageEntryControllerIntegrationTest {
             storageEntryRepository.findAll().get(0)
                 .getDetails().get(0).getEntryDetailId()
         );
+    }
+
+        @Test
+    public void testIntegrationCreateStorageEntryWithActualExpirationDate() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo con vencimiento real");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        food.setDefaultShelfLifeDays(90);
+        Food savedFood = foodRepository.save(food);
+
+        String requestBody = """
+                {
+                    "movementDateTime": "2026-10-19T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 3,
+                            "expirationDate": "2027-02-10"
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isCreated());
+
+        List<StorageBatch> batches = storageBatchRepository.findAll();
+        assertEquals(1, batches.size());
+
+        StorageBatch batch = batches.get(0);
+        assertEquals(LocalDate.of(2027, 2, 10), batch.getExpirationDate());
+        assertEquals(ExpirationDateType.ACTUAL, batch.getExpirationDateType());
+    }
+
+        @Test
+    public void testIntegrationCreateStorageEntryWithEstimatedExpirationDate() throws Exception {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        Storage savedStorage = storageRepository.save(storage);
+
+        Food food = new Food();
+        food.setName("Pollo con vencimiento estimado");
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        food.setDefaultShelfLifeDays(90);
+        Food savedFood = foodRepository.save(food);
+
+        String requestBody = """
+                {
+                    "movementDateTime": "2026-10-19T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 3
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
+
+        mockMvc.perform(post("/api/v1/storagesentry")
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isCreated());
+
+        List<StorageBatch> batches = storageBatchRepository.findAll();
+        assertEquals(1, batches.size());
+
+        StorageBatch batch = batches.get(0);
+        assertEquals(LocalDate.of(2027, 1, 17), batch.getExpirationDate());
+        assertEquals(ExpirationDateType.ESTIMATED, batch.getExpirationDateType());
     }
 
         @Test

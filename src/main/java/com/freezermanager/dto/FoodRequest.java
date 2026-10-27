@@ -8,6 +8,7 @@ import com.freezermanager.domain.food.UnitOfMeasure;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public record FoodRequest(
     @NotBlank(message = "El nombre no puede estar vacio.")
@@ -15,5 +16,7 @@ public record FoodRequest(
     @NotNull(message = "El alimento debe tener una categoria.")
     FoodCategory category,
     @NotEmpty(message = "No puede haber un alimento sin unidades de medida.")
-    Set<UnitOfMeasure> unitOfMeasures
+    Set<UnitOfMeasure> unitOfMeasures,
+    @Positive(message = "La vida útil predeterminada debe ser mayor que cero.")
+    Integer defaultShelfLifeDays
 ){}

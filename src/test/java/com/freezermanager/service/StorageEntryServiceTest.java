@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import java.util.List;
 import java.util.Optional;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
@@ -25,6 +26,7 @@ import com.freezermanager.exception.NotFoundException;
 import com.freezermanager.repository.StorageEntryRepository;
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.UnitOfMeasure;
+import com.freezermanager.domain.storage.ExpirationDateType;
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageBatch;
 import com.freezermanager.domain.storage.StorageEntryDetail;
@@ -112,7 +114,8 @@ public class StorageEntryServiceTest {
             new StorageEntryDetailRequest(
                 5L,
                 UnitOfMeasure.KG,
-                quantity
+                quantity,
+                null
             );
 
         StorageEntryRequest request = new StorageEntryRequest(
@@ -205,16 +208,17 @@ public class StorageEntryServiceTest {
             new StorageEntryDetailRequest(
                 5L,
                 UnitOfMeasure.KG,
-                quantity1
+                quantity1,
+                null
             );
 
         StorageEntryDetailRequest requestDetail2 =
             new StorageEntryDetailRequest(
                 6L,
                 UnitOfMeasure.G,
-                quantity2
+                quantity2,
+                null
             );
-
         StorageEntryRequest request = new StorageEntryRequest(
             LocalDateTime.now(),
             1L,
@@ -312,6 +316,190 @@ public class StorageEntryServiceTest {
                 0,
                 normalizedQuantity2.compareTo(batch2.getAvailableQuantity())
             );
+
+            return true;
+        }));
+    }
+
+        @Test
+    public void shouldUseActualExpirationDateWhenProvided() {
+        Storage storage = new Storage();
+        storage.setId(1L);
+
+        Food food = new Food();
+        food.setFoodId(5L);
+        food.setDefaultShelfLifeDays(90);
+
+        LocalDate movementDate = LocalDate.of(2026, 10, 19);
+        LocalDate actualExpirationDate = LocalDate.of(2027, 2, 10);
+        BigDecimal quantity = new BigDecimal("2.00");
+        BigDecimal normalizedQuantity = new BigDecimal("2000.00");
+
+        StorageEntryDetailRequest detailRequest =
+            new StorageEntryDetailRequest(
+                5L,
+                UnitOfMeasure.KG,
+                quantity,
+                actualExpirationDate
+            );
+
+        StorageEntryRequest request = new StorageEntryRequest(
+            movementDate.atTime(12, 0),
+            1L,
+            List.of(detailRequest)
+        );
+
+        StorageEntryDetail detail = new StorageEntryDetail();
+
+        when(storageRepository.findByIdForUpdate(1L))
+            .thenReturn(Optional.of(storage));
+        when(foodService.getActiveFoodById(5L)).thenReturn(food);
+        when(unitConversionService.toInventoryUnit(quantity, UnitOfMeasure.KG))
+            .thenReturn(normalizedQuantity);
+        when(storageItemRepository.findByStorageIdAndFoodId(1L, 5L))
+            .thenReturn(Optional.empty());
+        when(storageEntryDetailService.buildEntryDetail(
+            eq(food), eq(detailRequest), any(StorageEntry.class)
+        )).thenAnswer(invocation -> {
+            StorageEntry entry = invocation.getArgument(2);
+            detail.setStorageEntry(entry);
+            detail.setFood(food);
+            detail.setCantidad(quantity);
+            detail.setSelectedUnit(UnitOfMeasure.KG);
+            return detail;
+        });
+        when(storageEntryRepository.save(any(StorageEntry.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        storageEntryService.createStorageEntry(request);
+
+        verify(storageBatchRepository).saveAll(argThat(batches -> {
+            StorageBatch batch = batches.iterator().next();
+
+            assertEquals(actualExpirationDate, batch.getExpirationDate());
+            assertEquals(ExpirationDateType.ACTUAL, batch.getExpirationDateType());
+
+            return true;
+        }));
+    }
+
+        @Test
+    public void shouldEstimateExpirationDateWhenActualDateIsNotProvided() {
+        Storage storage = new Storage();
+        storage.setId(1L);
+
+        Food food = new Food();
+        food.setFoodId(5L);
+        food.setDefaultShelfLifeDays(90);
+
+        LocalDate movementDate = LocalDate.of(2026, 10, 19);
+        LocalDate expectedExpirationDate = LocalDate.of(2027, 1, 17);
+        BigDecimal quantity = new BigDecimal("2.00");
+        BigDecimal normalizedQuantity = new BigDecimal("2000.00");
+
+        StorageEntryDetailRequest detailRequest =
+            new StorageEntryDetailRequest(
+                5L,
+                UnitOfMeasure.KG,
+                quantity,
+                null
+            );
+
+        StorageEntryRequest request = new StorageEntryRequest(
+            movementDate.atTime(12, 0),
+            1L,
+            List.of(detailRequest)
+        );
+
+        StorageEntryDetail detail = new StorageEntryDetail();
+
+        when(storageRepository.findByIdForUpdate(1L))
+            .thenReturn(Optional.of(storage));
+        when(foodService.getActiveFoodById(5L)).thenReturn(food);
+        when(unitConversionService.toInventoryUnit(quantity, UnitOfMeasure.KG))
+            .thenReturn(normalizedQuantity);
+        when(storageItemRepository.findByStorageIdAndFoodId(1L, 5L))
+            .thenReturn(Optional.empty());
+        when(storageEntryDetailService.buildEntryDetail(
+            eq(food), eq(detailRequest), any(StorageEntry.class)
+        )).thenAnswer(invocation -> {
+            StorageEntry entry = invocation.getArgument(2);
+            detail.setStorageEntry(entry);
+            detail.setFood(food);
+            detail.setCantidad(quantity);
+            detail.setSelectedUnit(UnitOfMeasure.KG);
+            return detail;
+        });
+        when(storageEntryRepository.save(any(StorageEntry.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        storageEntryService.createStorageEntry(request);
+
+        verify(storageBatchRepository).saveAll(argThat(batches -> {
+            StorageBatch batch = batches.iterator().next();
+
+            assertEquals(expectedExpirationDate, batch.getExpirationDate());
+            assertEquals(ExpirationDateType.ESTIMATED, batch.getExpirationDateType());
+
+            return true;
+        }));
+    }
+
+        @Test
+    public void shouldLeaveExpirationUndefinedWhenNoDateOrShelfLifeExists() {
+        Storage storage = new Storage();
+        storage.setId(1L);
+
+        Food food = new Food();
+        food.setFoodId(5L);
+        food.setDefaultShelfLifeDays(null);
+
+        BigDecimal quantity = new BigDecimal("2.00");
+        BigDecimal normalizedQuantity = new BigDecimal("2000.00");
+
+        StorageEntryDetailRequest detailRequest =
+            new StorageEntryDetailRequest(
+                5L,
+                UnitOfMeasure.KG,
+                quantity,
+                null
+            );
+
+        StorageEntryRequest request = new StorageEntryRequest(
+            LocalDateTime.of(2026, 10, 19, 12, 0),
+            1L,
+            List.of(detailRequest)
+        );
+
+        StorageEntryDetail detail = new StorageEntryDetail();
+
+        when(storageRepository.findByIdForUpdate(1L))
+            .thenReturn(Optional.of(storage));
+        when(foodService.getActiveFoodById(5L)).thenReturn(food);
+        when(unitConversionService.toInventoryUnit(quantity, UnitOfMeasure.KG))
+            .thenReturn(normalizedQuantity);
+        when(storageItemRepository.findByStorageIdAndFoodId(1L, 5L))
+            .thenReturn(Optional.empty());
+        when(storageEntryDetailService.buildEntryDetail(
+            eq(food), eq(detailRequest), any(StorageEntry.class)
+        )).thenAnswer(invocation -> {
+            StorageEntry entry = invocation.getArgument(2);
+            detail.setStorageEntry(entry);
+            detail.setFood(food);
+            detail.setCantidad(quantity);
+            detail.setSelectedUnit(UnitOfMeasure.KG);
+            return detail;
+        });
+        when(storageEntryRepository.save(any(StorageEntry.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        storageEntryService.createStorageEntry(request);
+
+        verify(storageBatchRepository).saveAll(argThat(batches -> {
+            StorageBatch batch = batches.iterator().next();
+
+            assertNull(batch.getExpirationDate());
+            assertEquals(ExpirationDateType.UNDEFINED, batch.getExpirationDateType());
 
             return true;
         }));
