@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,6 +23,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.UnitOfMeasure;
@@ -42,6 +46,8 @@ import com.freezermanager.repository.StorageRepository;
 
 @ExtendWith(MockitoExtension.class)
 class StorageExitServiceTest {
+
+    private static final String AUTHENTICATED_EMAIL = "usuario@test.com";
 
     @Mock
     private StorageExitRepository storageExitRepository;
@@ -69,6 +75,42 @@ class StorageExitServiceTest {
 
     @InjectMocks
     private StorageExitService storageExitService;
+
+    @BeforeEach
+    void setUp() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        AUTHENTICATED_EMAIL,
+                        null,
+                        List.of()
+                )
+        );
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private Storage mockOwnedStorage(Storage storage) {
+        when(storageRepository.findByIdAndOwner_EmailIgnoreCase(
+                storage.getId(),
+                AUTHENTICATED_EMAIL
+        )).thenReturn(Optional.of(storage));
+
+        when(storageRepository.findByIdForUpdate(storage.getId()))
+                .thenReturn(Optional.of(storage));
+
+        return storage;
+    }
+
+    private void mockBatchOwnedByUser(Long batchId) {
+        when(storageBatchRepository
+                .existsByIdAndStorageEntryDetail_StorageEntry_Storage_Owner_EmailIgnoreCase(
+                        batchId,
+                        AUTHENTICATED_EMAIL
+                )).thenReturn(true);
+    }
 
     private StorageBatch createBatch(
             Storage storage,
@@ -111,14 +153,15 @@ class StorageExitServiceTest {
         StorageExit extraction = new StorageExit();
         extraction.setStorageExitId(1L);
 
-        List<StorageExit> expectedExtractions = List.of(extraction);
-
         Pageable pageable = PageRequest.of(0, 10);
-        Page<StorageExit> expectedPage =
-                new PageImpl<>(expectedExtractions, pageable, 1);
 
-        when(storageExitRepository.findAll(pageable))
-                .thenReturn(expectedPage);
+        Page<StorageExit> expectedPage =
+                new PageImpl<>(List.of(extraction), pageable, 1);
+
+        when(storageExitRepository.findAllByStorage_Owner_EmailIgnoreCase(
+                AUTHENTICATED_EMAIL,
+                pageable
+        )).thenReturn(expectedPage);
 
         Page<StorageExit> result =
                 storageExitService.getAllStorageExits(pageable);
@@ -127,7 +170,11 @@ class StorageExitServiceTest {
         assertEquals(1, result.getTotalElements());
         assertEquals(1, result.getContent().size());
 
-        verify(storageExitRepository).findAll(pageable);
+        verify(storageExitRepository)
+                .findAllByStorage_Owner_EmailIgnoreCase(
+                        AUTHENTICATED_EMAIL,
+                        pageable
+                );
     }
 
     @Test
@@ -135,33 +182,49 @@ class StorageExitServiceTest {
         StorageExit expectedExtraction = new StorageExit();
         expectedExtraction.setStorageExitId(1L);
 
-        when(storageExitRepository.findById(1L))
-                .thenReturn(Optional.of(expectedExtraction));
+        when(storageExitRepository
+                .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
+                        1L,
+                        AUTHENTICATED_EMAIL
+                )).thenReturn(Optional.of(expectedExtraction));
 
         StorageExit result =
                 storageExitService.getStorageExitById(1L);
 
         assertEquals(expectedExtraction, result);
-        verify(storageExitRepository).findById(1L);
+
+        verify(storageExitRepository)
+                .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
+                        1L,
+                        AUTHENTICATED_EMAIL
+                );
     }
 
     @Test
     void shouldThrowNotFoundExceptionWhenExtractionDoesNotExist() {
-        when(storageExitRepository.findById(99L))
-                .thenReturn(Optional.empty());
+        when(storageExitRepository
+                .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
+                        99L,
+                        AUTHENTICATED_EMAIL
+                )).thenReturn(Optional.empty());
 
         assertThrows(
                 NotFoundException.class,
                 () -> storageExitService.getStorageExitById(99L)
         );
 
-        verify(storageExitRepository).findById(99L);
+        verify(storageExitRepository)
+                .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
+                        99L,
+                        AUTHENTICATED_EMAIL
+                );
     }
 
     @Test
     void shouldCreateStorageExitAndSubtractStock() {
         Storage storage = new Storage();
         storage.setId(1L);
+        mockOwnedStorage(storage);
 
         Food food = new Food();
         food.setFoodId(1L);
@@ -178,22 +241,23 @@ class StorageExitServiceTest {
                 new BigDecimal("5")
         );
 
-        when(storageRepository.findByIdForUpdate(1L))
-                .thenReturn(Optional.of(storage));
-
         when(foodService.getActiveFoodById(1L))
                 .thenReturn(food);
 
         when(storageBatchRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(batch));
 
+        mockBatchOwnedByUser(10L);
+
         when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
-                1L, 1L))
-                .thenReturn(Optional.of(storageItem));
+                1L,
+                1L
+        )).thenReturn(Optional.of(storageItem));
 
         when(unitConversionService.toInventoryUnit(
-                new BigDecimal("2"), UnitOfMeasure.UNIT))
-                .thenReturn(new BigDecimal("2"));
+                new BigDecimal("2"),
+                UnitOfMeasure.UNIT
+        )).thenReturn(new BigDecimal("2"));
 
         StorageExitDetailRequest detailRequest =
                 new StorageExitDetailRequest(
@@ -206,12 +270,12 @@ class StorageExitServiceTest {
         when(storageExitDetailService.buildExitDetail(
                 eq(food),
                 eq(detailRequest),
-                any(StorageExit.class)))
-                .thenAnswer(invocation -> createExitDetail(
-                        invocation.getArgument(0),
-                        invocation.getArgument(1),
-                        invocation.getArgument(2)
-                ));
+                any(StorageExit.class)
+        )).thenAnswer(invocation -> createExitDetail(
+                invocation.getArgument(0),
+                invocation.getArgument(1),
+                invocation.getArgument(2)
+        ));
 
         when(storageExitRepository.save(any(StorageExit.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -254,6 +318,7 @@ class StorageExitServiceTest {
     void shouldThrowExceptionWhenStockIsInsufficient() {
         Storage storage = new Storage();
         storage.setId(1L);
+        mockOwnedStorage(storage);
 
         Food food = new Food();
         food.setFoodId(1L);
@@ -270,18 +335,18 @@ class StorageExitServiceTest {
                 new BigDecimal("5")
         );
 
-        when(storageRepository.findByIdForUpdate(1L))
-                .thenReturn(Optional.of(storage));
-
         when(foodService.getActiveFoodById(1L))
                 .thenReturn(food);
 
         when(storageBatchRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(batch));
 
+        mockBatchOwnedByUser(10L);
+
         when(unitConversionService.toInventoryUnit(
-                new BigDecimal("6"), UnitOfMeasure.UNIT))
-                .thenReturn(new BigDecimal("6"));
+                new BigDecimal("6"),
+                UnitOfMeasure.UNIT
+        )).thenReturn(new BigDecimal("6"));
 
         StorageExitDetailRequest detailRequest =
                 new StorageExitDetailRequest(
@@ -292,10 +357,10 @@ class StorageExitServiceTest {
                 );
 
         when(storageExitDetailService.buildExitDetail(
-        eq(food),
-        eq(detailRequest),
-        any(StorageExit.class)))
-        .thenAnswer(invocation -> createExitDetail(
+                eq(food),
+                eq(detailRequest),
+                any(StorageExit.class)
+        )).thenAnswer(invocation -> createExitDetail(
                 invocation.getArgument(0),
                 invocation.getArgument(1),
                 invocation.getArgument(2)
@@ -331,6 +396,7 @@ class StorageExitServiceTest {
     void shouldThrowExceptionWhenStorageItemDoesNotExist() {
         Storage storage = new Storage();
         storage.setId(1L);
+        mockOwnedStorage(storage);
 
         Food food = new Food();
         food.setFoodId(1L);
@@ -342,22 +408,23 @@ class StorageExitServiceTest {
                 new BigDecimal("5")
         );
 
-        when(storageRepository.findByIdForUpdate(1L))
-                .thenReturn(Optional.of(storage));
-
         when(foodService.getActiveFoodById(1L))
                 .thenReturn(food);
 
         when(storageBatchRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(batch));
 
+        mockBatchOwnedByUser(10L);
+
         when(unitConversionService.toInventoryUnit(
-                new BigDecimal("2"), UnitOfMeasure.UNIT))
-                .thenReturn(new BigDecimal("2"));
+                new BigDecimal("2"),
+                UnitOfMeasure.UNIT
+        )).thenReturn(new BigDecimal("2"));
 
         when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
-                1L, 1L))
-                .thenReturn(Optional.empty());
+                1L,
+                1L
+        )).thenReturn(Optional.empty());
 
         StorageExitDetailRequest detailRequest =
                 new StorageExitDetailRequest(
@@ -370,12 +437,12 @@ class StorageExitServiceTest {
         when(storageExitDetailService.buildExitDetail(
                 eq(food),
                 eq(detailRequest),
-                any(StorageExit.class)))
-                .thenAnswer(invocation -> createExitDetail(
-                        invocation.getArgument(0),
-                        invocation.getArgument(1),
-                        invocation.getArgument(2)
-                ));
+                any(StorageExit.class)
+        )).thenAnswer(invocation -> createExitDetail(
+                invocation.getArgument(0),
+                invocation.getArgument(1),
+                invocation.getArgument(2)
+        ));
 
         StorageExitRequest request = new StorageExitRequest(
                 LocalDateTime.now(),
@@ -402,13 +469,11 @@ class StorageExitServiceTest {
     void shouldThrowExceptionWhenUnitIsNotAllowed() {
         Storage storage = new Storage();
         storage.setId(1L);
+        mockOwnedStorage(storage);
 
         Food food = new Food();
         food.setFoodId(1L);
         food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
-
-        when(storageRepository.findByIdForUpdate(1L))
-                .thenReturn(Optional.of(storage));
 
         when(foodService.getActiveFoodById(1L))
                 .thenReturn(food);
@@ -450,9 +515,7 @@ class StorageExitServiceTest {
     void shouldThrowExceptionWhenFoodIsInactive() {
         Storage storage = new Storage();
         storage.setId(1L);
-
-        when(storageRepository.findByIdForUpdate(1L))
-                .thenReturn(Optional.of(storage));
+        mockOwnedStorage(storage);
 
         when(foodService.getActiveFoodById(1L))
                 .thenThrow(new IllegalArgumentException(

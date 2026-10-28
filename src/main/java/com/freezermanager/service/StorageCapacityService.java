@@ -1,8 +1,10 @@
+
 package com.freezermanager.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,9 +38,15 @@ public class StorageCapacityService {
 
     @Transactional(readOnly = true)
     public StorageCapacityResponse getCapacity(Long storageId) {
-        Storage storage = storageRepository.findById(storageId)
+        String email = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getName();
+
+        Storage storage = storageRepository
+                .findByIdAndOwner_EmailIgnoreCase(storageId, email)
                 .orElseThrow(() -> new NotFoundException(
-                        "No existe un Freezer con el ID: " + storageId));
+                        "No existe un Freezer con el ID: " + storageId
+                ));
 
         BigDecimal nominalCapacity = storage.getCapacidadLitros();
         BigDecimal recommendedCapacity = nominalCapacity
@@ -68,24 +76,32 @@ public class StorageCapacityService {
                 }
 
                 estimatedLoadKg = estimatedLoadKg.add(
-                        quantity.multiply(weightPerUnit));
+                        quantity.multiply(weightPerUnit)
+                );
             } else {
                 estimatedLoadKg = estimatedLoadKg.add(
                         quantity.divide(
                                 GRAMS_PER_KILOGRAM,
                                 6,
-                                RoundingMode.HALF_UP));
+                                RoundingMode.HALF_UP
+                        )
+                );
             }
         }
 
         BigDecimal estimatedLiters = estimatedLoadKg
                 .multiply(LITERS_PER_KILOGRAM);
 
-        BigDecimal occupancyPercentage = recommendedCapacity.compareTo(ZERO) == 0
-                ? ZERO
-                : estimatedLiters
-                        .divide(recommendedCapacity, 4, RoundingMode.HALF_UP)
-                        .multiply(new BigDecimal("100"));
+        BigDecimal occupancyPercentage =
+                recommendedCapacity.compareTo(ZERO) == 0
+                        ? ZERO
+                        : estimatedLiters
+                                .divide(
+                                        recommendedCapacity,
+                                        4,
+                                        RoundingMode.HALF_UP
+                                )
+                                .multiply(new BigDecimal("100"));
 
         BigDecimal remainingCapacity = recommendedCapacity
                 .subtract(estimatedLiters)

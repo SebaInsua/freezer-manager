@@ -11,8 +11,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -33,13 +35,45 @@ import com.freezermanager.repository.StorageEntryRepository;
 import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
 import com.freezermanager.domain.storage.StorageBatch;
+import com.freezermanager.domain.user.User;
 import com.freezermanager.repository.StorageBatchRepository;
+import com.freezermanager.repository.UserRepository;
+import com.freezermanager.service.JwtService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
 public class StorageEntryControllerIntegrationTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtService jwtService;
+
+    private User testUser;
+    private String authorizationHeader;
+
+    @BeforeEach
+    void setUpAuthenticatedUser() {
+        User user = new User();
+        user.setEmail("storage-entry-test-" + UUID.randomUUID() + "@example.com");
+        user.setPassword("test-password-hash");
+        testUser = userRepository.save(user);
+        authorizationHeader = "Bearer " + jwtService.generateToken(testUser.getEmail());
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+            authenticatedGet(String url, Object... uriVariables) {
+        return get(url, uriVariables).header("Authorization", authorizationHeader);
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+            authenticatedPost(String url, Object... uriVariables) {
+        return post(url, uriVariables).header("Authorization", authorizationHeader);
+    }
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -60,7 +94,7 @@ public class StorageEntryControllerIntegrationTest {
 
         @Test
     public void testIntegrationWhenStoragesEntriesItsEmpty() throws Exception {
-        mockMvc.perform(get("/api/v1/storagesentry"))
+        mockMvc.perform(authenticatedGet("/api/v1/storagesentry"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(0)))
                 .andExpect(jsonPath("$.empty").value(true))
@@ -72,16 +106,18 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationWhenExistsStorages() throws Exception{
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         storageRepository.save(storage);
 
         Storage storage2 = new Storage();
         storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storage2.setOwner(testUser);
         storageRepository.save(storage2);
 
         createEntryWithDetail(storage, "Tomate");
         createEntryWithDetail(storage2, "Pollo");
 
-        mockMvc.perform(get("/api/v1/storagesentry"))
+        mockMvc.perform(authenticatedGet("/api/v1/storagesentry"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].storage.capacidadLitros",
@@ -96,11 +132,12 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationStorageEntryById() throws Exception{
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         storageRepository.save(storage);
 
         StorageEntry entryGuardado = createEntryWithDetail(storage, "Carne");
 
-        mockMvc.perform(get("/api/v1/storagesentry/{id}",entryGuardado.getStorageEntryId()))
+        mockMvc.perform(authenticatedGet("/api/v1/storagesentry/{id}",entryGuardado.getStorageEntryId()))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.storageEntryId").value(entryGuardado.getStorageEntryId()))
@@ -111,6 +148,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationWhenStoragesEntriesDoesntExists() throws Exception{
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         storageRepository.save(storage);
 
         StorageEntry entryGuardado = createEntryWithDetail(storage, "Pescado");
@@ -122,7 +160,7 @@ public class StorageEntryControllerIntegrationTest {
 
         String messageExpected = "No existe un registro de ingreso con el ID: " + idInexistente;
 
-        mockMvc.perform(get("/api/v1/storagesentry/{id}",idInexistente))
+        mockMvc.perform(authenticatedGet("/api/v1/storagesentry/{id}",idInexistente))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value(messageExpected))
                 .andExpect(jsonPath("$.status").value(404));
@@ -132,12 +170,13 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationWhenStorageEntryHasDetails() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         storageRepository.save(storage);
 
         StorageEntry entryGuardado = createEntryWithDetail(storage, "Tomate");
 
         mockMvc.perform(
-                get("/api/v1/storagesentry/{id}/details",
+                authenticatedGet("/api/v1/storagesentry/{id}/details",
                         entryGuardado.getStorageEntryId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -151,6 +190,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationCreateStorageEntryAndCreateStorageItem() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -172,7 +212,7 @@ public class StorageEntryControllerIntegrationTest {
                 }
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isCreated())
@@ -218,6 +258,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationCreateStorageEntryWithActualExpirationDate() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -241,7 +282,7 @@ public class StorageEntryControllerIntegrationTest {
                 }
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isCreated());
@@ -258,6 +299,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationCreateStorageEntryWithEstimatedExpirationDate() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -280,7 +322,7 @@ public class StorageEntryControllerIntegrationTest {
                 }
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isCreated());
@@ -297,6 +339,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationCreateStorageEntryAndIncreaseExistingStorageItem() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -324,7 +367,7 @@ public class StorageEntryControllerIntegrationTest {
                 }
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isCreated())
@@ -344,6 +387,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationInvalidUnitDoesNotUpdateInventory() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -371,7 +415,7 @@ public class StorageEntryControllerIntegrationTest {
                 }
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
@@ -395,6 +439,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationInactiveFoodDoesNotCreateStorageEntryOrUpdateInventory() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -417,7 +462,7 @@ public class StorageEntryControllerIntegrationTest {
                 }
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
@@ -437,6 +482,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationInactiveFoodRollsBackEntireStorageEntry() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food activeFood = new Food();
@@ -475,7 +521,7 @@ public class StorageEntryControllerIntegrationTest {
 
         long batchesBefore = storageBatchRepository.count();
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
@@ -538,6 +584,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationCreateStorageEntryWithDifferentWeightUnits() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -559,7 +606,7 @@ public class StorageEntryControllerIntegrationTest {
                 }
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(firstRequestBody))
                 .andExpect(status().isCreated())
@@ -580,7 +627,7 @@ public class StorageEntryControllerIntegrationTest {
                 }
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                         .contentType("application/json")
                         .content(secondRequestBody))
                 .andExpect(status().isCreated())
@@ -600,6 +647,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationEntryWithZeroQuantityIsRejected() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -621,7 +669,7 @@ public class StorageEntryControllerIntegrationTest {
             }
             """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                 .contentType("application/json")
                 .content(requestBody))
             .andExpect(status().isBadRequest());
@@ -639,6 +687,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationEntryWithNegativeQuantityIsRejected() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -660,7 +709,7 @@ public class StorageEntryControllerIntegrationTest {
             }
             """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                 .contentType("application/json")
                 .content(requestBody))
             .andExpect(status().isBadRequest());
@@ -678,6 +727,7 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationEntryWithNullQuantityIsRejected() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -699,7 +749,7 @@ public class StorageEntryControllerIntegrationTest {
             }
             """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
-        mockMvc.perform(post("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                 .contentType("application/json")
                 .content(requestBody))
             .andExpect(status().isBadRequest());
@@ -718,21 +768,24 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationStorageEntriesWithPagination() throws Exception {
         Storage storage1 = new Storage();
         storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage1.setOwner(testUser);
         storageRepository.save(storage1);
 
         Storage storage2 = new Storage();
         storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storage2.setOwner(testUser);
         storageRepository.save(storage2);
 
         Storage storage3 = new Storage();
         storage3.setCapacidadLitros(BigDecimal.valueOf(320));
+        storage3.setOwner(testUser);
         storageRepository.save(storage3);
 
         createEntryWithDetail(storage1, "Tomate");
         createEntryWithDetail(storage2, "Pollo");
         createEntryWithDetail(storage3, "Carne");
 
-        mockMvc.perform(get("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedGet("/api/v1/storagesentry")
                 .param("page", "0")
                 .param("size", "2"))
                 .andExpect(status().isOk())
@@ -745,21 +798,24 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationStorageEntriesWithSecondPage() throws Exception {
         Storage storage1 = new Storage();
         storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage1.setOwner(testUser);
         storageRepository.save(storage1);
 
         Storage storage2 = new Storage();
         storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storage2.setOwner(testUser);
         storageRepository.save(storage2);
 
         Storage storage3 = new Storage();
         storage3.setCapacidadLitros(BigDecimal.valueOf(320));
+        storage3.setOwner(testUser);
         storageRepository.save(storage3);
 
         createEntryWithDetail(storage1, "Tomate");
         createEntryWithDetail(storage2, "Pollo");
         createEntryWithDetail(storage3, "Carne");
 
-        mockMvc.perform(get("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedGet("/api/v1/storagesentry")
                 .param("page", "1")
                 .param("size", "2"))
                 .andExpect(status().isOk())
@@ -772,16 +828,18 @@ public class StorageEntryControllerIntegrationTest {
     public void testIntegrationStorageEntriesWithDescendingSort() throws Exception {
         Storage storage1 = new Storage();
         storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage1.setOwner(testUser);
         storageRepository.save(storage1);
 
         Storage storage2 = new Storage();
         storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storage2.setOwner(testUser);
         storageRepository.save(storage2);
 
         createEntryWithDetail(storage1, "Tomate");
         createEntryWithDetail(storage2, "Pollo");
 
-        mockMvc.perform(get("/api/v1/storagesentry")
+        mockMvc.perform(authenticatedGet("/api/v1/storagesentry")
                 .param("sort", "storageEntryId,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))

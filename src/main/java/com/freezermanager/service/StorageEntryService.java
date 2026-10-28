@@ -8,6 +8,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.freezermanager.repository.StorageEntryDetailRepository;
 import com.freezermanager.domain.food.Food;
@@ -40,6 +42,17 @@ public class StorageEntryService {
     private final StorageRepository storageRepository;
     private final StorageBatchRepository storageBatchRepository;
 
+    private String getAuthenticatedEmail() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("No hay un usuario autenticado.");
+        }
+
+        return authentication.getName();
+    }
+
     private void updateInventory(Storage storage, Food food, BigDecimal normalizedQuantity) {
         var storageItem = storageItemRepository
             .findByStorageIdAndFoodId(storage.getId(), food.getFoodId());
@@ -58,27 +71,52 @@ public class StorageEntryService {
     }
 
     public Page<StorageEntry> getAllStorageEntries(Pageable pageable) {
-        return storageEntryRepository.findAll(pageable);
+        String email = getAuthenticatedEmail();
+
+        return storageEntryRepository
+                .findAllByStorage_Owner_EmailIgnoreCase(email, pageable);
     }
 
-    public StorageEntry getStorageEntryById(Long id){
-        return storageEntryRepository.findById(id).orElseThrow(() -> new NotFoundException("No existe un registro de ingreso con el ID: " + id));
+    public StorageEntry getStorageEntryById(Long id) {
+        String email = getAuthenticatedEmail();
+
+        return storageEntryRepository
+                .findByStorageEntryIdAndStorage_Owner_EmailIgnoreCase(id, email)
+                .orElseThrow(() -> new NotFoundException(
+                        "No existe un registro de ingreso con el ID: " + id
+                ));
     }
 
-    public List<StorageEntryDetail> getDetailsByEntryId(Long id){
-        if (!storageEntryRepository.existsById(id)){
-            throw new NotFoundException("No existe un registro de ingreso con el ID: "+ id);
+    public List<StorageEntryDetail> getDetailsByEntryId(Long id) {
+        String email = getAuthenticatedEmail();
+
+        boolean belongsToUser = storageEntryRepository
+                .existsByStorageEntryIdAndStorage_Owner_EmailIgnoreCase(id, email);
+
+        if (!belongsToUser) {
+            throw new NotFoundException(
+                    "No existe un registro de ingreso con el ID: " + id
+            );
         }
-        return storageEntryDetailRepository.findDetailsByStorageEntryId(id);
-    }
 
+        return storageEntryDetailRepository
+                .findDetailsByEntryIdAndOwnerEmail(id, email);
+    }
 
     @Transactional
     public StorageEntry createStorageEntry(StorageEntryRequest request) {
-        Storage storage = storageRepository.findByIdForUpdate(request.storageId())
-            .orElseThrow(() -> new NotFoundException(
-                "No existe un depósito con el ID: " + request.storageId()
-            ));
+        String email = getAuthenticatedEmail();
+
+        Storage storage = storageRepository
+                .findByIdAndOwner_EmailIgnoreCase(request.storageId(), email)
+                .orElseThrow(() -> new NotFoundException(
+                        "No existe un depósito con el ID: " + request.storageId()
+                ));
+
+        storage = storageRepository.findByIdForUpdate(storage.getId())
+                .orElseThrow(() -> new NotFoundException(
+                        "No existe un depósito con el ID: " + request.storageId()
+                ));
 
         StorageEntry entry = new StorageEntry();
         List<StorageEntryDetail> listDetails = new ArrayList<>();

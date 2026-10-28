@@ -12,7 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,6 +25,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.freezermanager.domain.user.User;
+import com.freezermanager.repository.UserRepository;
+import com.freezermanager.service.JwtService;
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.FoodCategory;
 import com.freezermanager.domain.food.UnitOfMeasure;
@@ -70,6 +75,24 @@ public class StorageExitControllerIntegrationTest {
 
     @Autowired
     private StorageEntryRepository storageEntryRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtService jwtService;
+
+    private User testUser;
+    private String authorizationHeader;
+
+    @BeforeEach
+    void setUpAuthenticatedUser() {
+        User user = new User();
+        user.setEmail("storage-exit-test-" + UUID.randomUUID() + "@example.com");
+        user.setPassword("test-password-hash");
+        testUser = userRepository.save(user);
+        authorizationHeader = "Bearer " + jwtService.generateToken(testUser.getEmail());
+    }
 
     private final Map<Long, List<Long>> createdBatchIdsByStorage =
             new HashMap<>();
@@ -149,7 +172,7 @@ public class StorageExitControllerIntegrationTest {
     public void testIntegrationWhenStoragesExitsItsEmpty()
             throws Exception {
 
-        mockMvc.perform(get("/api/v1/storagesexit"))
+        mockMvc.perform(get("/api/v1/storagesexit").header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(0)))
                 .andExpect(jsonPath("$.totalElements").value(0))
@@ -163,10 +186,12 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         storageRepository.save(storage);
 
         Storage storage2 = new Storage();
         storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storage2.setOwner(testUser);
         storageRepository.save(storage2);
 
         StorageExit exit = new StorageExit();
@@ -184,7 +209,7 @@ public class StorageExitControllerIntegrationTest {
         storageExitRepository.save(exit);
         storageExitRepository.save(exit2);
 
-        mockMvc.perform(get("/api/v1/storagesexit"))
+        mockMvc.perform(get("/api/v1/storagesexit").header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.totalElements").value(2))
@@ -200,6 +225,7 @@ public class StorageExitControllerIntegrationTest {
     public void testIntegrationStorageExitById() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         storageRepository.save(storage);
 
         StorageExit exit = new StorageExit();
@@ -212,7 +238,7 @@ public class StorageExitControllerIntegrationTest {
 
         mockMvc.perform(get(
                         "/api/v1/storagesexit/{id}",
-                        exitGuardado.getStorageExitId()))
+                        exitGuardado.getStorageExitId()).header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.storageExitId")
                         .value(exitGuardado.getStorageExitId()))
@@ -227,6 +253,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         storageRepository.save(storage);
 
         StorageExit exit = new StorageExit();
@@ -249,7 +276,7 @@ public class StorageExitControllerIntegrationTest {
 
         mockMvc.perform(get(
                         "/api/v1/storagesexit/{id}",
-                        idInexistente))
+                        idInexistente).header("Authorization", authorizationHeader))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value(messageExpected))
                 .andExpect(jsonPath("$.status").value(404));
@@ -259,6 +286,7 @@ public class StorageExitControllerIntegrationTest {
     public void testIntegrationWhenExitHasDetails() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         storageRepository.save(storage);
 
         StorageExit exit = new StorageExit();
@@ -292,7 +320,7 @@ public class StorageExitControllerIntegrationTest {
 
         mockMvc.perform(get(
                         "/api/v1/storagesexit/{id}/details",
-                        exitGuardado.getStorageExitId()))
+                        exitGuardado.getStorageExitId()).header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath(
@@ -308,6 +336,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -347,7 +376,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isCreated())
@@ -383,6 +412,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -422,7 +452,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isBadRequest());
@@ -455,6 +485,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -494,7 +525,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isCreated())
@@ -521,6 +552,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -560,7 +592,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isCreated())
@@ -587,6 +619,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -626,7 +659,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isCreated())
@@ -660,6 +693,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -699,7 +733,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isBadRequest());
@@ -740,6 +774,7 @@ public class StorageExitControllerIntegrationTest {
         try {
             Storage storage = new Storage();
             storage.setCapacidadLitros(BigDecimal.valueOf(120));
+            storage.setOwner(testUser);
             savedStorage = storageRepository.save(storage);
 
             final Long storageId = savedStorage.getId();
@@ -810,7 +845,7 @@ public class StorageExitControllerIntegrationTest {
                     savedFish.getFoodId(),
                     fishBatch.getId());
 
-            mockMvc.perform(post("/api/v1/storagesexit")
+            mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
                 .andExpect(status().isBadRequest());
@@ -919,6 +954,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -956,7 +992,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isBadRequest());
@@ -980,6 +1016,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -1017,7 +1054,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isBadRequest());
@@ -1041,6 +1078,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -1078,7 +1116,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isBadRequest());
@@ -1102,6 +1140,7 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(testUser);
         Storage savedStorage = storageRepository.save(storage);
 
         Food food = new Food();
@@ -1141,7 +1180,7 @@ public class StorageExitControllerIntegrationTest {
                 savedFood.getFoodId(),
                 batch.getId());
 
-        mockMvc.perform(post("/api/v1/storagesexit")
+        mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isBadRequest());
@@ -1173,6 +1212,7 @@ public class StorageExitControllerIntegrationTest {
         try {
             Storage storage = new Storage();
             storage.setCapacidadLitros(BigDecimal.valueOf(120));
+            storage.setOwner(testUser);
             savedStorage = storageRepository.save(storage);
 
             Food chicken = new Food();
@@ -1239,7 +1279,7 @@ public class StorageExitControllerIntegrationTest {
                     savedFish.getFoodId(),
                     fishBatch.getId());
 
-            mockMvc.perform(post("/api/v1/storagesexit")
+            mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
                 .andExpect(status().isBadRequest());
@@ -1331,14 +1371,17 @@ public class StorageExitControllerIntegrationTest {
     public void testIntegrationStorageExitsPagination() throws Exception {
         Storage storage1 = new Storage();
         storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage1.setOwner(testUser);
         storageRepository.save(storage1);
 
         Storage storage2 = new Storage();
         storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storage2.setOwner(testUser);
         storageRepository.save(storage2);
 
         Storage storage3 = new Storage();
         storage3.setCapacidadLitros(BigDecimal.valueOf(320));
+        storage3.setOwner(testUser);
         storageRepository.save(storage3);
 
         StorageExit exit1 = new StorageExit();
@@ -1362,7 +1405,7 @@ public class StorageExitControllerIntegrationTest {
         exit3.setStorage(storage3);
         storageExitRepository.save(exit3);
 
-        mockMvc.perform(get("/api/v1/storagesexit")
+        mockMvc.perform(get("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                         .param("page", "0")
                         .param("size", "2")
                         .param("sort", "storageExitId,asc"))
@@ -1375,7 +1418,7 @@ public class StorageExitControllerIntegrationTest {
                 .andExpect(jsonPath("$.content[1].storageExitId")
                         .value(exit2.getStorageExitId()));
 
-        mockMvc.perform(get("/api/v1/storagesexit")
+        mockMvc.perform(get("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                         .param("page", "1")
                         .param("size", "2")
                         .param("sort", "storageExitId,asc"))
@@ -1392,10 +1435,12 @@ public class StorageExitControllerIntegrationTest {
 
         Storage storage1 = new Storage();
         storage1.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage1.setOwner(testUser);
         storageRepository.save(storage1);
 
         Storage storage2 = new Storage();
         storage2.setCapacidadLitros(BigDecimal.valueOf(220));
+        storage2.setOwner(testUser);
         storageRepository.save(storage2);
 
         StorageExit exit1 = new StorageExit();
@@ -1412,7 +1457,7 @@ public class StorageExitControllerIntegrationTest {
         exit2.setStorage(storage2);
         storageExitRepository.save(exit2);
 
-        mockMvc.perform(get("/api/v1/storagesexit")
+        mockMvc.perform(get("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                         .param("page", "0")
                         .param("size", "10")
                         .param("sort", "storageExitId,desc"))

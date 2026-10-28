@@ -1,5 +1,6 @@
 package com.freezermanager.controller;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -7,13 +8,20 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.WebApplicationContext;
 
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.FoodCategory;
 import com.freezermanager.domain.food.UnitOfMeasure;
+import com.freezermanager.domain.user.User;
 import com.freezermanager.repository.FoodRepository;
-
+import com.freezermanager.repository.UserRepository;
+import com.freezermanager.service.JwtService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -35,10 +43,36 @@ import com.jayway.jsonpath.JsonPath;
 public class FoodControllerIntegrationTest {
         
         @Autowired
-        private MockMvc mockMvc;
+        private WebApplicationContext webApplicationContext;
 
         @Autowired
         private FoodRepository foodRepository;
+
+        @Autowired
+        private UserRepository userRepository;
+
+        @Autowired
+        private JwtService jwtService;
+
+        private MockMvc mockMvc;
+
+        @BeforeEach
+        void setUp() {
+        User user = new User();
+        user.setEmail("food-test@example.com");
+        user.setPassword("test-password-hash");
+
+        User savedUser = userRepository.save(user);
+        String token = jwtService.generateToken(savedUser.getEmail());
+
+        MockHttpServletRequestBuilder defaultRequest = get("/")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+
+        mockMvc = MockMvcBuilders
+                .webAppContextSetup(webApplicationContext)
+                .defaultRequest(defaultRequest)
+                .build();
+        }
 
         @Test
         public void testIntegrationWhenFoodsItsEmpty() throws Exception {

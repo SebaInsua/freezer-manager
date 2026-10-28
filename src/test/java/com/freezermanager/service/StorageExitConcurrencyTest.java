@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,6 +17,9 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +31,8 @@ import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageBatch;
 import com.freezermanager.domain.storage.StorageEntry;
 import com.freezermanager.domain.storage.StorageEntryDetail;
-import com.freezermanager.domain.storage.StorageExit;
 import com.freezermanager.domain.storage.StorageItem;
+import com.freezermanager.domain.user.User;
 import com.freezermanager.dto.StorageExitDetailRequest;
 import com.freezermanager.dto.StorageExitRequest;
 import com.freezermanager.repository.FoodRepository;
@@ -39,6 +43,7 @@ import com.freezermanager.repository.StorageExitDetailRepository;
 import com.freezermanager.repository.StorageExitRepository;
 import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
+import com.freezermanager.repository.UserRepository;
 
 @SpringBootTest
 @ActiveProfiles("postgres-test")
@@ -72,15 +77,43 @@ class StorageExitConcurrencyTest {
     @Autowired
     private StorageBatchRepository storageBatchRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private Long batchId;
 
+    private String ownerEmail;
+
+    private User createOwner() {
+        User user = new User();
+        user.setEmail("concurrency-" + UUID.randomUUID() + "@example.com");
+        user.setPassword("test-password-hash");
+        return userRepository.saveAndFlush(user);
+    }
+
+    private void authenticateAs(String email) {
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(
+            new UsernamePasswordAuthenticationToken(
+                email,
+                null,
+                List.of()
+            )
+        );
+        SecurityContextHolder.setContext(context);
+    }
+
     private StorageItem createInventoryWithStock(BigDecimal quantity) {
+        User owner = createOwner();
+        ownerEmail = owner.getEmail();
+
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(owner);
         Storage savedStorage = storageRepository.saveAndFlush(storage);
 
         Food food = new Food();
-        food.setName("Pollo concurrencia " + System.nanoTime());
+        food.setName("Pollo concurrencia " + UUID.randomUUID());
         food.setCategory(FoodCategory.values()[0]);
         food.setUnitOfMeasures(Set.of(UnitOfMeasure.G, UnitOfMeasure.KG));
         food.setActive(true);
@@ -125,6 +158,7 @@ class StorageExitConcurrencyTest {
 
     private void cleanUp(StorageItem item) {
         Long storageId = item.getStorage().getId();
+        Long foodId = item.getFood().getFoodId();
 
         storageExitRepository.findAllByStorageId(storageId)
             .forEach(exit -> {
@@ -135,7 +169,8 @@ class StorageExitConcurrencyTest {
                 storageExitRepository.delete(exit);
             });
 
-        storageItemRepository.delete(item);
+        storageItemRepository.findByStorageIdAndFoodId(storageId, foodId)
+            .ifPresent(storageItemRepository::delete);
 
         if (batchId != null) {
             storageBatchRepository.findById(batchId).ifPresent(batch -> {
@@ -157,13 +192,18 @@ class StorageExitConcurrencyTest {
         foodRepository.delete(item.getFood());
         storageRepository.delete(item.getStorage());
 
+        if (ownerEmail != null) {
+            userRepository.findByEmailIgnoreCase(ownerEmail)
+                .ifPresent(userRepository::delete);
+        }
+
         batchId = null;
+        ownerEmail = null;
     }
 
     @Test
     void shouldCreateInventoryWithInitialStock() {
-        StorageItem item =
-            createInventoryWithStock(new BigDecimal("1000"));
+        StorageItem item = createInventoryWithStock(new BigDecimal("1000"));
 
         try {
             assertEquals(
@@ -181,20 +221,18 @@ class StorageExitConcurrencyTest {
     void shouldPreventConcurrentExitsFromConsumingMoreThanAvailableStock()
             throws Exception {
 
-        StorageItem item =
-            createInventoryWithStock(new BigDecimal("1000"));
+        StorageItem item = createInventoryWithStock(new BigDecimal("1000"));
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch startSignal = new CountDownLatch(1);
 
         try {
-            StorageExitDetailRequest detail =
-                new StorageExitDetailRequest(
-                    item.getFood().getFoodId(),
-                    batchId,
-                    UnitOfMeasure.G,
-                    new BigDecimal("700")
-                );
+            StorageExitDetailRequest detail = new StorageExitDetailRequest(
+                item.getFood().getFoodId(),
+                batchId,
+                UnitOfMeasure.G,
+                new BigDecimal("700")
+            );
 
             StorageExitRequest request = new StorageExitRequest(
                 LocalDateTime.now(),
@@ -203,8 +241,9 @@ class StorageExitConcurrencyTest {
             );
 
             Future<Boolean> firstExit = executor.submit(() -> {
-                startSignal.await();
+                authenticateAs(ownerEmail);
                 try {
+                    startSignal.await();
                     storageExitService.createStorageExit(request);
                     return true;
                 } catch (IllegalArgumentException e) {
@@ -215,12 +254,15 @@ class StorageExitConcurrencyTest {
                         return false;
                     }
                     throw e;
+                } finally {
+                    SecurityContextHolder.clearContext();
                 }
             });
 
             Future<Boolean> secondExit = executor.submit(() -> {
-                startSignal.await();
+                authenticateAs(ownerEmail);
                 try {
+                    startSignal.await();
                     storageExitService.createStorageExit(request);
                     return true;
                 } catch (IllegalArgumentException e) {
@@ -231,6 +273,8 @@ class StorageExitConcurrencyTest {
                         return false;
                     }
                     throw e;
+                } finally {
+                    SecurityContextHolder.clearContext();
                 }
             });
 
@@ -279,6 +323,7 @@ class StorageExitConcurrencyTest {
                 }
             }
 
+            SecurityContextHolder.clearContext();
             cleanUp(item);
         }
     }

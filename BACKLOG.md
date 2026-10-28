@@ -1,220 +1,388 @@
-# Freezer Manager — Roadmap y backlog
+# Freezer Manager --- Roadmap y backlog
 
-> Documento de continuidad del proyecto. Actualizarlo al cerrar cada tarea y subir los cambios a GitHub.
+> Documento de continuidad del proyecto. Actualizarlo al cerrar cada
+> tarea y subir los cambios a GitHub.
 >
-> **Fuente del estado actual:** código y Git del repositorio revisados el 23/10/2026.  
-> **Importante:** este archivo reconstruye el backlog a partir del estado real del proyecto y sus objetivos documentados. No se pudo recuperar palabra por palabra el mapa anterior de ChatGPT; las tareas futuras están marcadas como propuestas y deben priorizarse antes de implementarlas.
+> **Última actualización:** 28/10/2026, después del merge de FM-041.
+>
+> **Objetivo actual:** preparar una primera versión funcional y
+> presentable para portfolio, demostrando desarrollo de una API REST con
+> Spring Boot, persistencia, reglas de negocio, autenticación y
+> autorización JWT, pruebas automatizadas y ejecución con Docker.
 
 ## 1. Contexto del proyecto
 
-**Freezer Manager** es una API REST para ayudar a un hogar a administrar alimentos, inventario del freezer, compras, preparación de comidas e historial de movimientos.
+**Freezer Manager** es una API REST para administrar alimentos,
+almacenamientos e inventario de un freezer, registrar ingresos y egresos
+y consultar movimientos.
 
 ### Stack confirmado
-- Java 21
-- Spring Boot 4
-- Maven
-- Spring Data JPA / Hibernate
-- PostgreSQL para desarrollo
-- H2 y perfil `test` para pruebas
-- JUnit y Mockito; tests de integración con Spring Boot / MockMvc
+
+-   Java 21
+-   Spring Boot 4
+-   Maven
+-   Spring Data JPA / Hibernate
+-   PostgreSQL para desarrollo
+-   H2 y perfil `test` para pruebas
+-   JUnit y Mockito; pruebas de integración con Spring Boot / MockMvc
+-   OpenAPI/Swagger para documentar y explorar la API
 
 ### Arquitectura actual
-- `domain`: entidades y enums de alimentos e inventario.
-- `dto`: requests y respuestas de la API.
-- `repository`: persistencia con Spring Data JPA.
-- `service`: lógica de negocio.
-- `controller`: endpoints REST.
-- `exception`: excepciones y manejo global de errores.
 
-## 2. Estado actual — completado
+-   `domain`: entidades y enums de alimentos e inventario.
+-   `dto`: requests y respuestas de la API.
+-   `repository`: persistencia con Spring Data JPA.
+-   `service`: lógica de negocio.
+-   `controller`: endpoints REST.
+-   `exception`: excepciones y manejo global de errores.
 
-Estas funcionalidades están presentes en `main` según el historial de Git y el código revisado.
+## 2. Estado actual --- FM-035 a FM-041 completadas
 
-- [x] Estructura inicial del proyecto y configuración de Spring Boot.
-- [x] Perfiles separados para desarrollo y tests.
-- [x] Modelo de alimentos, categorías y unidades de medida.
-- [x] Modelo de depósitos/ubicaciones de almacenamiento.
-- [x] Modelo de movimientos: ingresos, egresos y sus detalles.
-- [x] Validaciones de dominio y restricciones de entidades.
-- [x] Repositorios JPA.
-- [x] Servicios de alimentos, depósitos, ítems de inventario e ingresos/egresos.
-- [x] Endpoints REST para alimentos, depósitos, ítems y movimientos.
-- [x] Manejo global de errores y respuestas estructuradas.
-- [x] Alta, actualización, desactivación y filtrado de alimentos activos.
-- [x] Prevención de movimientos con alimentos inactivos.
-- [x] Registro de ingresos y actualización del inventario.
-- [x] Registro de egresos y descuento del inventario.
-- [x] Respuesta HTTP 400 para errores de negocio aplicables.
-- [x] Normalización de cantidades: KG a gramos; G y UNIT conservan su escala.
-- [x] Validación de unidades permitidas para cada alimento.
-- [x] Eliminación del `StorageItem` cuando el stock llega a cero, dado que su cantidad debe ser positiva.
-- [x] Modularización de la construcción de detalles de ingreso y egreso mediante `StorageEntryDetailService` y `StorageExitDetailService`.
-- [x] Extracción de conversión de unidades en `UnitConversionService`.
-- [x] Tests unitarios y de integración para las funcionalidades anteriores.
-- [x] Test de integración que verifica rollback de un egreso con varios detalles cuando un detalle no tiene stock suficiente.
-- [x] Merge a `main` del PR #37 (`refactor: modularize entry and exit detail creation`).
-- [x] Última ejecución reportada por el usuario: `mvn clean test`, todos los tests aprobados.
-- [x] Repositorio limpio después del merge.
+**Todas las tareas FM-035, FM-036, FM-037, FM-038, FM-039, FM-040 y
+FM-041 se consideran completadas e integradas en `main`, según la
+confirmación del usuario.** No volver a planificarlas como pendientes.
 
-### Último hito de Git
-- Commit de la tarea: `99fd479` — `refactor: modularize entry and exit detail creation`
-- PR integrado: #37
-- Rama de trabajo integrada: `refactor/storage-exit-detail-service`
+-   [x] **FM-035 --- Documentar y verificar el contrato actual de la
+    API.** Documentación OpenAPI/Swagger y revisión del contrato.
+-   [x] **FM-036 --- Revisión de reglas de negocio e inventario.**
+    Reglas y validaciones de inventario implementadas/revisadas.
+-   [x] **FM-037 --- Consistencia y concurrencia del inventario.**
+    Marcada como completada según el estado confirmado del backlog.
+-   [x] **FM-038 --- Paginación, orden y filtros de listados.** Marcada
+    como completada según el estado confirmado del backlog.
+-   [x] **FM-039 --- Inventario por lotes.** Marcada como completada
+    según el estado confirmado del backlog.
+-   [x] **FM-040 --- Fechas de vencimiento y alertas.** Marcada como
+    completada según el estado confirmado del backlog.
+-   [x] **FM-041 --- Capacidad del freezer y espacio disponible.**
+    Cálculo de capacidad estimada y espacio recomendado, con factor
+    aproximado de 3.5 litros/kg y límite recomendado del 80%.
 
-## 3. Backlog próximo — orden sugerido
+### Hito más reciente de Git
 
-Las tareas siguientes son una propuesta basada en los objetivos del README y en la funcionalidad existente. Confirmar el alcance de cada una antes de comenzar.
+-   Commit de FM-041: `e44f70f` ---
+    `feat: add storage capacity estimation`
+-   Rama `feat/storage-capacity` integrada en `main` y eliminada después
+    del merge.
+-   El usuario confirmó que el repositorio quedó limpio después del
+    merge.
+-   Última suite reportada tras FM-041: **135 tests, 0 failures, 0
+    errors, 0 skipped**.
+-   No asumir que ese recuento sigue vigente después de futuras
+    modificaciones; ejecutar la suite al cerrar cada tarea.
 
-### FM-035 — Documentar y verificar el contrato actual de la API
-**Prioridad:** alta · **Tipo:** documentación/calidad
+## 3. Objetivo de la primera versión presentable (MVP)
 
-- [x] Revisar los endpoints, métodos HTTP, DTOs, validaciones y códigos de respuesta reales.
-- [x] Añadir documentación OpenAPI/Swagger si todavía no está configurada.
-- [ ] Documentar ejemplos de requests y responses, incluidos errores.
-- [x] Verificar que la documentación coincida con el comportamiento de los tests.
-- [x] Ejecutar `mvn clean test`.
+El objetivo es que una persona técnica pueda clonar y ejecutar el
+proyecto, registrarse, autenticarse, operar el inventario y consultar
+movimientos. La API debe demostrar buenas prácticas de backend, no solo
+operaciones CRUD.
 
-**Criterio de aceptación:** una persona puede entender y probar los endpoints sin leer la implementación de los servicios.
+### Incluido en el MVP
 
-### FM-036 — Revisión de reglas de negocio e inventario
-**Prioridad:** alta · **Tipo:** calidad/backend
+-   Registro de usuario e inicio de sesión.
+-   Contraseñas almacenadas con hash seguro.
+-   Autenticación mediante JWT.
+-   Protección de endpoints con Spring Security.
+-   Autorización y aislamiento de los datos por usuario.
+-   Historial y consultas de ingresos/egresos con filtros útiles.
+-   PostgreSQL y ejecución reproducible mediante Docker Compose.
+-   Configuración mediante variables de entorno; secretos fuera del
+    repositorio.
+-   Pruebas unitarias y de integración.
+-   README y documentación OpenAPI/Swagger con ejemplos de autenticación
+    y uso.
 
-- [ ] Revisar validaciones de cantidades nulas, cero y negativas en requests.
-- [ ] Verificar que los alimentos solo acepten las unidades compatibles.
-- [ ] Verificar cantidades canónicas para KG, G y UNIT en ingresos y egresos.
-- [ ] Confirmar comportamiento cuando el stock queda exactamente en cero.
-- [ ] Confirmar que un egreso inválido no deje cambios parciales.
-- [ ] Añadir tests para cualquier caso límite que falte.
+### Fuera del alcance inicial
 
-**Criterio de aceptación:** reglas documentadas y cubiertas por tests unitarios o de integración.
+Evitar ampliar el alcance sin una necesidad concreta. El objetivo es
+terminar una primera versión sólida y demostrable.
 
-### FM-037 — Consistencia y concurrencia del inventario
-**Prioridad:** alta · **Tipo:** robustez
+## 4. Backlog pendiente
 
-- [ ] Evaluar qué sucede si dos egresos intentan consumir el mismo stock simultáneamente.
-- [ ] Elegir una estrategia apropiada (por ejemplo, bloqueo optimista/pesimista o actualización atómica) según el modelo actual.
-- [ ] Añadir pruebas que validen la estrategia elegida; no confundir rollback de una transacción con una prueba de concurrencia real.
-- [ ] Documentar la decisión técnica.
+Las tareas nuevas comienzan en FM-045 para conservar los identificadores
+históricos. Confirmar el alcance contra el código actual antes de
+implementar cada tarea.
 
-**Criterio de aceptación:** el sistema no permite retirar más unidades de las disponibles bajo solicitudes concurrentes.
+### FM-045 --- Registro de usuarios, autenticación JWT y autorización
 
-### FM-038 — Paginación, orden y filtros de listados
-**Prioridad:** media · **Tipo:** API
+**Prioridad:** muy alta · **Tipo:** seguridad/backend · **Estado:** en progreso
 
-- [ ] Revisar listados que actualmente devuelven colecciones completas.
-- [ ] Incorporar paginación y orden donde resulte útil.
-- [ ] Mantener filtros por estado activo y agregar otros solo si responden a necesidades concretas.
-- [ ] Añadir tests de parámetros inválidos y resultados paginados.
+La implementación principal se encuentra realizada en la rama `feat/user-authentication`. Incluye registro e inicio de sesión, autenticación JWT, protección de endpoints y aislamiento de los recursos asociados a los usuarios. La suite completa de tests pasó tras los cambios de autenticación.
 
-**Criterio de aceptación:** los listados pueden consultarse de forma controlada y documentada.
+Queda pendiente la revisión final de los criterios de aceptación, la documentación y la confirmación de que todos los puntos de seguridad previstos estén cubiertos.
 
-### FM-039 — Inventario por lotes
-**Prioridad:** media · **Tipo:** funcionalidad de dominio
+#### Etapa A --- Diseño e inspección
 
-El README original menciona administrar inventario por lotes. Antes de implementarlo, definir qué representa un lote (fecha de ingreso, vencimiento, cantidad, ubicación, costo u otros datos).
+-   [x] Actualizar `main` y revisar `pom.xml`, configuración de
+    seguridad existente, entidades, DTOs, servicios, controladores y
+    perfiles.
+-   [x] Confirmar dependencias y compatibilidad de Spring Security/JWT
+    con la versión actual de Spring Boot.
+-   [x] Definir el modelo de usuario y el identificador único de inicio
+    de sesión (por ejemplo, email).
+-   [x] Definir qué recursos pertenecen a cada usuario y cómo se
+    vinculará el propietario a los almacenamientos y movimientos.
+-   [x] Decidir qué endpoints serán públicos y cuáles requerirán
+    autenticación.
 
-- [ ] Definir el modelo de lote y sus reglas.
-- [ ] Diseñar cómo se vinculan los ingresos con los lotes.
-- [ ] Definir cómo se descuentan lotes al registrar un egreso (por ejemplo, primero vence, primero sale, si corresponde).
-- [ ] Planificar migración y compatibilidad con el inventario actual.
-- [ ] Implementar y probar en tareas pequeñas.
+#### Etapa B --- Registro y login
 
-**Criterio de aceptación:** se puede rastrear cuánto stock corresponde a cada lote y cómo se consume.
+-   [x] Crear entidad de usuario, repositorio y restricciones de
+    unicidad.
+-   [x] Crear DTOs de registro y login con validaciones.
+-   [x] Implementar registro e inicio de sesión.
+-   [x] Guardar contraseñas con un `PasswordEncoder` seguro, por ejemplo
+    BCrypt; nunca almacenar ni devolver contraseñas en texto plano.
+-   [x] Manejar duplicados y credenciales inválidas con respuestas HTTP
+    apropiadas.
+-   [x] Añadir pruebas unitarias y de integración.
 
-### FM-040 — Fechas de vencimiento y alertas
-**Prioridad:** media · **Tipo:** funcionalidad de dominio
+#### Etapa C --- JWT y Spring Security
 
-- [ ] Definir si el vencimiento se registra por lote o por alimento.
-- [ ] Crear consultas para alimentos próximos a vencer y vencidos.
-- [ ] Definir umbrales configurables para alertas.
-- [ ] Añadir tests para límites de fechas.
+-   [x] Implementar generación y validación de JWT con expiración.
+-   [x] Leer la clave/secreto desde configuración externa; no versionar
+    secretos reales.
+-   [x] Configurar Spring Security para autenticar solicitudes mediante
+    `Authorization: Bearer <token>`.
+-   [x] Mantener el registro, login y los recursos públicos
+    explícitamente permitidos sin autenticación.
+-   [x] Proteger los endpoints privados.
+-   [x] Definir respuestas coherentes para token ausente, inválido o
+    vencido.
+-   [x] Añadir pruebas para autenticación exitosa y fallida, y para
+    endpoints públicos y protegidos.
 
-**Dependencia:** definir primero el modelo de lotes si el vencimiento pertenece a cada partida.
+#### Etapa D --- Autorización y aislamiento de datos
 
-### FM-041 — Capacidad del freezer y espacio disponible
-**Prioridad:** media · **Tipo:** funcionalidad de dominio
+-   [x] Aplicar la propiedad de usuario a los recursos definidos para el
+    MVP.
+-   [x] Validar la autorización en la lógica de negocio y las consultas;
+    no depender solamente de ocultar rutas en el controlador.
+-   [x] Evitar que un usuario acceda a recursos de otro modificando un
+    ID de la URL.
+-   [x] Añadir pruebas donde el usuario A intenta consultar o modificar
+    recursos del usuario B.
+-   [x] Revisar especialmente almacenamientos, inventario, ingresos y
+    egresos para no filtrar datos entre usuarios.
+-   [x] Documentar las decisiones de seguridad y los cambios de modelo
+    necesarios.
 
-El README menciona estimar capacidad y espacio libre.
+**Criterios de aceptación:**
 
-- [ ] Definir cómo se expresa la capacidad (volumen, peso u otra medida).
-- [ ] Determinar qué datos debe tener cada depósito/freezer.
-- [ ] Definir cómo se estima el espacio ocupado y sus limitaciones.
-- [ ] Implementar consultas y validaciones sin asumir que peso equivale a volumen.
+-   Un usuario puede registrarse e iniciar sesión.
+-   Las contraseñas se guardan hasheadas y nunca se exponen en
+    respuestas.
+-   Un JWT válido permite acceder a endpoints protegidos; un token
+    ausente, inválido o vencido no.
+-   Los endpoints públicos y privados están definidos explícitamente.
+-   Un usuario no puede consultar ni modificar los recursos de otro
+    usuario.
+-   Las pruebas automatizadas cubren registro, login, JWT y aislamiento
+    entre usuarios.
 
-**Criterio de aceptación:** la API ofrece una estimación explícita y documentada de capacidad utilizada y disponible.
+**Alcance deliberadamente acotado:** para la primera versión basta un
+tipo de usuario común. No implementar OAuth, refresh tokens,
+recuperación de contraseña, verificación de email ni roles complejos
+salvo que aparezca una necesidad concreta. JWT y autorización deben
+desarrollarse como partes relacionadas de esta misma iniciativa,
+posiblemente en commits o PRs pequeños.
 
-### FM-042 — Compras de alimentos
-**Prioridad:** media · **Tipo:** funcionalidad
+### FM-043 --- Historial y consultas de movimientos
 
-El README menciona registrar compras y cantidades.
+**Prioridad:** alta · **Tipo:** funcionalidad/API · **Estado:**
+pendiente
 
-- [ ] Definir si una compra crea automáticamente un ingreso de inventario o requiere confirmación.
-- [ ] Modelar compra, detalle, precio y fecha solo según el alcance acordado.
-- [ ] Definir cómo se relacionan compras con alimentos y movimientos de ingreso.
-- [ ] Añadir endpoints y tests.
+-   [ ] Inspeccionar los endpoints y repositorios actuales de ingresos y
+    egresos para detectar qué consultas ya existen.
+-   [ ] Definir un contrato coherente para consultar movimientos por
+    tipo, alimento, almacenamiento y período.
+-   [ ] Implementar filtros, ordenamiento y paginación si corresponde al
+    volumen esperado.
+-   [ ] Asegurar que el detalle histórico conserve la cantidad y unidad
+    originales solicitadas, aunque el inventario use cantidades
+    normalizadas.
+-   [ ] Integrar la autorización de FM-045 para que cada usuario solo
+    vea los movimientos permitidos.
+-   [ ] Añadir pruebas para filtros, límites de fechas, orden,
+    paginación y aislamiento de datos.
+-   [ ] Documentar los parámetros y ejemplos de respuesta.
 
-### FM-043 — Historial y consultas de movimientos
-**Prioridad:** media · **Tipo:** API
+**Criterios de aceptación:** un usuario autenticado puede consultar un
+historial útil con filtros documentados y no puede acceder a movimientos
+de otro usuario.
 
-- [ ] Revisar consultas de historial de ingresos y egresos por alimento, depósito y período.
-- [ ] Definir filtros y orden.
-- [ ] Asegurar que el detalle histórico conserve la cantidad y unidad originales solicitadas, aunque el inventario use cantidades normalizadas.
-- [ ] Añadir tests para filtros y límites de fechas.
+### FM-046 --- Docker y ejecución reproducible
 
-### FM-044 — Preparación de comidas y consumo
-**Prioridad:** posterior · **Tipo:** funcionalidad de producto
+**Prioridad:** muy alta · **Tipo:** infraestructura · **Estado:**
+pendiente
 
-El README menciona preparación de comidas y registro de consumo.
+-   [ ] Crear un `Dockerfile` adecuado para empaquetar y ejecutar la
+    API.
+-   [ ] Crear `compose.yaml` con la API y PostgreSQL.
+-   [ ] Configurar URL y credenciales de base de datos, secreto JWT y
+    demás valores mediante variables de entorno.
+-   [ ] Añadir `.env.example` con placeholders no sensibles; no
+    versionar secretos reales.
+-   [ ] Configurar persistencia de PostgreSQL mediante un volumen.
+-   [ ] Configurar una estrategia razonable de
+    disponibilidad/healthcheck para PostgreSQL y el arranque de la API.
+-   [ ] Comprobar que las pruebas continúen ejecutándose con el perfil
+    `test` y H2, sin depender de Docker.
+-   [ ] Validar la ejecución desde un entorno limpio siguiendo las
+    instrucciones del README.
 
-- [ ] Definir el concepto de comida/receta y sus ingredientes.
-- [ ] Definir si una receta puede descontar automáticamente el inventario.
-- [ ] Diseñar el registro de preparación y consumo, evitando descontar stock dos veces.
-- [ ] Implementar una primera versión acotada y testeada.
+**Criterios de aceptación:** con Docker instalado y las variables
+configuradas, `docker compose up --build` inicia la API y PostgreSQL; se
+puede completar un flujo de registro, login y acceso autorizado.
 
-### FM-045 — Seguridad y preparación para despliegue
-**Prioridad:** antes de exponer la API públicamente · **Tipo:** infraestructura/seguridad
+### FM-047 --- Configuración segura y migraciones de base de datos
 
-- [ ] Revisar gestión de credenciales mediante variables de entorno.
-- [ ] Confirmar que secretos y contraseñas no estén versionados.
-- [ ] Evaluar autenticación y autorización según quién usará la API.
-- [ ] Revisar CORS, configuración de producción y perfiles.
-- [ ] Evaluar migraciones de base de datos (Flyway o Liquibase) en lugar de depender de actualización automática del esquema.
-- [ ] Preparar Docker y documentación de ejecución si el despliegue lo requiere.
+**Prioridad:** alta antes de una demo pública · **Tipo:**
+seguridad/operaciones · **Estado:** pendiente
 
-## 4. Forma de trabajo acordada
+-   [ ] Revisar credenciales, secretos, perfiles y configuración CORS.
+-   [ ] Confirmar que no haya secretos reales ni datos sensibles
+    versionados.
+-   [ ] Evaluar Flyway o Liquibase para versionar el esquema en vez de
+    depender de actualización automática.
+-   [ ] Definir una configuración separada para desarrollo y tests, y
+    una configuración segura para una futura demo.
+-   [ ] Documentar límites conocidos y evitar exponer configuración de
+    desarrollo a Internet.
+
+**Criterios de aceptación:** secretos externalizados, esquema
+reproducible y configuración documentada. No hace falta desplegar
+públicamente para cerrar esta tarea.
+
+### FM-048 --- Documentación y demo de portfolio
+
+**Prioridad:** alta · **Tipo:** documentación/portfolio · **Estado:**
+pendiente
+
+-   [ ] Actualizar el README con propósito, stack, arquitectura y
+    funcionalidades implementadas.
+-   [ ] Documentar requisitos e instrucciones para ejecutar localmente y
+    con Docker.
+-   [ ] Documentar endpoints, DTOs, códigos de respuesta y errores
+    mediante OpenAPI/Swagger.
+-   [ ] Añadir ejemplos de registro, login, uso del JWT y consultas del
+    historial.
+-   [ ] Documentar las decisiones relevantes de seguridad: contraseñas
+    hasheadas, autorización y aislamiento por usuario.
+-   [ ] Incluir ejemplos de configuración con placeholders, nunca
+    secretos reales.
+-   [ ] Verificar que una persona pueda clonar y ejecutar el proyecto
+    siguiendo solamente el README.
+
+**Criterios de aceptación:** una persona técnica puede clonar el
+repositorio, iniciar el proyecto, registrar un usuario, autenticarse,
+operar el inventario y consultar el historial siguiendo la
+documentación.
+
+### FM-049 --- Revisión final de robustez del inventario
+
+**Prioridad:** media-alta · **Tipo:** calidad/backend · **Estado:**
+pendiente de reevaluar
+
+-   [ ] Revisar si la protección ante solicitudes concurrentes que
+    consumen el mismo stock está cubierta por la implementación y los
+    tests existentes.
+-   [ ] Si hay una brecha real, elegir una estrategia apropiada (por
+    ejemplo, bloqueo optimista/pesimista o actualización atómica).
+-   [ ] Añadir pruebas para la estrategia elegida; no confundir rollback
+    transaccional con una prueba real de concurrencia.
+-   [ ] Documentar la decisión y los límites restantes.
+
+**Criterios de aceptación:** los tests y la implementación respaldan la
+protección ante egresos concurrentes. No duplicar trabajo si ya está
+resuelto; inspeccionar el código antes de actuar.
+
+### FM-050 --- Paginación y filtros generales
+
+**Prioridad:** media · **Tipo:** API · **Estado:** pendiente de
+reevaluar
+
+-   [ ] Revisar los listados que todavía devuelvan colecciones
+    completas.
+-   [ ] Añadir paginación y orden donde resulte útil y no esté ya
+    cubierto por FM-043.
+-   [ ] Mantener filtros por estado activo y agregar otros solo si
+    responden a una necesidad concreta.
+-   [ ] Añadir tests para parámetros inválidos y resultados paginados.
+
+**Criterios de aceptación:** los listados que pueden crecer se consultan
+de forma controlada y documentada. Evitar duplicar el alcance del
+historial.
+
+## 5. Orden recomendado de implementación
+
+1. **FM-045 — Usuarios, JWT y autorización.** Completar la revisión final de seguridad, verificar los criterios de aceptación pendientes y actualizar la documentación antes de cerrar la iniciativa.
+2.  **FM-043 --- Historial de movimientos.** Completar las consultas y
+    asegurar que respeten la autorización por usuario.
+3.  **FM-046 --- Docker y PostgreSQL.** Preparar una ejecución
+    reproducible del flujo completo.
+4.  **FM-047 --- Configuración segura y migraciones.** Resolver lo
+    necesario para que el proyecto sea consistente y esté preparado para
+    una demo.
+5.  **FM-048 --- README y demo de portfolio.** Dejar instrucciones
+    claras para reclutadores y otros desarrolladores.
+6.  **FM-049 --- Robustez del inventario.** Confirmar si queda trabajo
+    real en concurrencia y resolver brechas importantes.
+7.  **FM-050 --- Paginación general.** Completar los listados que
+    realmente lo necesiten.
+
+El orden puede ajustarse si la inspección del código descubre
+dependencias técnicas. No asumir que una función falta ni duplicar
+trabajo sin comprobar primero la implementación actual.
+
+## 6. Forma de trabajo acordada
 
 Para cada tarea:
 
-1. Confirmar objetivo y criterios de aceptación antes de tocar código.
-2. Partir de `main` actualizado y crear una rama específica.
-3. Revisar el código existente antes de proponer cambios.
-4. Implementar paso a paso, explicando decisiones y dejando que Seba escriba el código.
-5. Añadir o actualizar tests.
-6. Ejecutar `mvn clean test`.
-7. Revisar `git diff` y `git status`.
-8. Hacer un commit con un mensaje claro.
-9. Subir la rama, abrir PR y hacer merge.
-10. Actualizar este `BACKLOG.md` con el estado real y el próximo paso.
+1.  Confirmar objetivo y criterios de aceptación antes de tocar código.
+2.  Partir de `main` actualizado y crear una rama específica.
+3.  Revisar el código existente antes de proponer cambios.
+4.  Implementar paso a paso, explicando decisiones y dejando que Seba
+    escriba el código.
+5.  Añadir o actualizar tests.
+6.  Ejecutar `./mvnw clean test`.
+7.  Revisar `git diff`, `git diff --check` y `git status`.
+8.  Hacer un commit con un mensaje claro.
+9.  Subir la rama, abrir PR y revisar las comprobaciones antes del
+    merge.
+10. Después del merge, volver a `main`, actualizarla, verificar que el
+    árbol esté limpio y actualizar este `BACKLOG.md`.
 
-## 5. Comandos habituales de Git
+## 7. Comandos habituales de Git
 
-```bash
+``` bash
 git switch main
-git pull
+git pull origin main
 git switch -c feat/nombre-de-la-tarea
 
 # Después de implementar y probar:
-mvn clean test
+./mvnw clean test
 git status
 git diff
-git add .
+git diff --check
+git add <archivos>
+git diff --cached --check
 git diff --cached --stat
 git commit -m "tipo: describe el cambio"
 git push -u origin feat/nombre-de-la-tarea
 ```
 
-Después del merge, volver a `main`, actualizarla y verificar que el árbol esté limpio.
+Después del merge, volver a `main`, actualizarla y verificar que el
+árbol esté limpio.
 
-## 6. Próxima acción
+## 8. Próxima acción
 
-Empezar por **FM-035: documentar y verificar el contrato actual de la API**, pero primero inspeccionar el `pom.xml` y los controladores para confirmar si OpenAPI/Swagger ya está configurado. Si el objetivo anterior del usuario o el mapa original recuperado indica otra prioridad, actualizar este orden antes de implementar.
+Completar la revisión de **FM-045 — Registro de usuarios, autenticación JWT y autorización** en la rama `feat/user-authentication`.
+
+1. Revisar los criterios de aceptación y los checks pendientes.
+2. Verificar el aislamiento de datos entre usuarios y el tratamiento de tokens inválidos, vencidos o asociados a usuarios inexistentes.
+3. Actualizar la documentación de seguridad y uso de la autenticación.
+4. Ejecutar `./mvnw clean test`.
+5. Revisar `git diff`, `git diff --check` y `git status`.
+6. Preparar el commit y continuar con el flujo de revisión y merge acordado.

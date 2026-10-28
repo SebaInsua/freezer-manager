@@ -13,8 +13,8 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +26,14 @@ import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageBatch;
 import com.freezermanager.domain.storage.StorageEntry;
 import com.freezermanager.domain.storage.StorageEntryDetail;
+import com.freezermanager.domain.user.User;
 import com.freezermanager.repository.FoodRepository;
 import com.freezermanager.repository.StorageBatchRepository;
 import com.freezermanager.repository.StorageEntryDetailRepository;
 import com.freezermanager.repository.StorageEntryRepository;
 import com.freezermanager.repository.StorageRepository;
+import com.freezermanager.repository.UserRepository;
+import com.freezermanager.service.JwtService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -56,13 +59,32 @@ class StorageBatchControllerIntegrationTest {
     @Autowired
     private StorageBatchRepository storageBatchRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtService jwtService;
+
+    private User createUser() {
+        User user = new User();
+        user.setEmail("storage-batch-test@example.com");
+        user.setPassword("test-password-hash");
+        return userRepository.save(user);
+    }
+
+    private String authorizationHeader(User user) {
+        return "Bearer " + jwtService.generateToken(user.getEmail());
+    }
+
     private StorageBatch createBatch(
+            User owner,
             String foodName,
             LocalDate expirationDate,
             ExpirationDateType expirationDateType) {
 
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
+        storage.setOwner(owner);
         storageRepository.save(storage);
 
         Set<UnitOfMeasure> units = new LinkedHashSet<>();
@@ -74,8 +96,12 @@ class StorageBatchControllerIntegrationTest {
         foodRepository.save(food);
 
         StorageEntry entry = new StorageEntry();
-        entry.setMovementDateTime(LocalDateTime.of(2026, 10, 19, 12, 0));
+        entry.setMovementDateTime(
+                LocalDateTime.of(2026, 10, 19, 12, 0)
+        );
         entry.setStorage(storage);
+        entry.setRecordedAt(LocalDateTime.now());
+        entry.setDetails(new java.util.ArrayList<>());
 
         StorageEntryDetail detail = new StorageEntryDetail();
         detail.setFood(food);
@@ -83,18 +109,9 @@ class StorageBatchControllerIntegrationTest {
         detail.setCantidad(BigDecimal.valueOf(3));
         detail.setStorageEntry(entry);
 
-        entry.setDetails(new java.util.ArrayList<>());
         entry.getDetails().add(detail);
 
-        entry.setRecordedAt(LocalDateTime.now());
-
         storageEntryRepository.save(entry);
-        storageEntryDetailRepository.save(detail);
-
-        detail.setFood(food);
-        detail.setSelectedUnit(UnitOfMeasure.KG);
-        detail.setCantidad(BigDecimal.valueOf(3));
-        detail.setStorageEntry(entry);
         storageEntryDetailRepository.save(detail);
 
         StorageBatch batch = new StorageBatch();
@@ -109,12 +126,17 @@ class StorageBatchControllerIntegrationTest {
 
     @Test
     void shouldReturnBatchesWithActualExpirationDate() throws Exception {
+        User owner = createUser();
+
         StorageBatch batch = createBatch(
+                owner,
                 "Pollo",
                 LocalDate.of(2027, 2, 10),
-                ExpirationDateType.ACTUAL);
+                ExpirationDateType.ACTUAL
+        );
 
-        mockMvc.perform(get("/api/v1/storagebatches"))
+        mockMvc.perform(get("/api/v1/storagebatches")
+                        .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].batchId").value(batch.getId()))
@@ -127,9 +149,17 @@ class StorageBatchControllerIntegrationTest {
 
     @Test
     void shouldReturnBatchesWithUndefinedExpirationDate() throws Exception {
-        createBatch("Pescado", null, ExpirationDateType.UNDEFINED);
+        User owner = createUser();
 
-        mockMvc.perform(get("/api/v1/storagebatches"))
+        createBatch(
+                owner,
+                "Pescado",
+                null,
+                ExpirationDateType.UNDEFINED
+        );
+
+        mockMvc.perform(get("/api/v1/storagebatches")
+                        .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].foodName").value("Pescado"))
@@ -139,19 +169,27 @@ class StorageBatchControllerIntegrationTest {
 
     @Test
     void shouldReturnEmptyListWhenNoBatchesExist() throws Exception {
-        mockMvc.perform(get("/api/v1/storagebatches"))
+        User owner = createUser();
+
+        mockMvc.perform(get("/api/v1/storagebatches")
+                        .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }
 
     @Test
     void shouldReturnBatchesWithEstimatedExpirationDate() throws Exception {
+        User owner = createUser();
+
         StorageBatch batch = createBatch(
+                owner,
                 "Carne",
                 LocalDate.of(2027, 1, 17),
-                ExpirationDateType.ESTIMATED);
+                ExpirationDateType.ESTIMATED
+        );
 
-        mockMvc.perform(get("/api/v1/storagebatches"))
+        mockMvc.perform(get("/api/v1/storagebatches")
+                        .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].batchId").value(batch.getId()))
