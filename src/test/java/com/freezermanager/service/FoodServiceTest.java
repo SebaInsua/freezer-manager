@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -86,6 +87,7 @@ public class FoodServiceTest {
             "Harina",
             FoodCategory.values()[0],
             Set.of(UnitOfMeasure.KG, UnitOfMeasure.G),
+            null,
             null
         );
 
@@ -105,6 +107,7 @@ public class FoodServiceTest {
             "Harina",
             FoodCategory.values()[0],
             Set.of(UnitOfMeasure.KG, UnitOfMeasure.UNIT),
+            null,
             null
         );
 
@@ -116,6 +119,57 @@ public class FoodServiceTest {
         );
 
         verify(foodRepository, never()).save(any(Food.class));
+    }
+
+    @Test
+    public void shouldCreateFoodWithEstimatedWeightPerUnit() {
+        BigDecimal estimatedWeight = new BigDecimal("0.150");
+
+        FoodRequest request = new FoodRequest(
+            "Hamburguesa",
+            FoodCategory.values()[0],
+            Set.of(UnitOfMeasure.UNIT),
+            null,
+            estimatedWeight
+        );
+
+        when(foodRepository.existsByNameIgnoreCase("Hamburguesa"))
+            .thenReturn(false);
+
+        when(foodRepository.save(any(Food.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Food result = foodService.createFood(request);
+
+        assertEquals(estimatedWeight, result.getEstimatedWeightPerUnitKg());
+        verify(foodRepository).save(any(Food.class));
+    }
+
+    @Test
+    public void shouldUpdateFoodWithEstimatedWeightPerUnit() {
+        Food food = new Food();
+        food.setFoodId(1L);
+        food.setName("Hamburguesa");
+        food.setCategory(FoodCategory.values()[0]);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
+
+        when(foodRepository.findById(1L)).thenReturn(Optional.of(food));
+        when(foodRepository.existsByNameIgnoreCaseAndFoodIdNot("Hamburguesa", 1L))
+            .thenReturn(false);
+
+        BigDecimal estimatedWeight = new BigDecimal("0.150");
+
+        FoodRequest request = new FoodRequest(
+            "Hamburguesa",
+            FoodCategory.values()[0],
+            Set.of(UnitOfMeasure.UNIT),
+            null,
+            estimatedWeight
+        );
+
+        Food result = foodService.updateFoods(request, 1L);
+
+        assertEquals(estimatedWeight, result.getEstimatedWeightPerUnitKg());
     }
 
 }

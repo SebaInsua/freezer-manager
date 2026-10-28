@@ -1,5 +1,6 @@
 package com.freezermanager.domain.food;
 
+import java.math.BigDecimal;
 import java.util.Set;
 
 import jakarta.persistence.CollectionTable;
@@ -51,4 +52,8 @@ public class Food {
     @Positive(message = "La vida útil predeterminada debe ser mayor que cero.")
     @Column(name = "default_shelf_life_days")
     private Integer defaultShelfLifeDays;
+
+    @Positive(message = "El peso estimado por unidad debe ser mayor que cero.")
+    @Column(name = "estimated_weight_per_unit_kg", precision = 10, scale = 3)
+    private BigDecimal estimatedWeightPerUnitKg;
 }
