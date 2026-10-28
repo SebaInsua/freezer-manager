@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.storage.Storage;
@@ -39,6 +41,17 @@ public class StorageExitService {
     private final UnitConversionService unitConversionService;
     private final StorageExitDetailService storageExitDetailService;
     private final StorageBatchRepository storageBatchRepository;
+
+    private String getAuthenticatedEmail() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("No hay un usuario autenticado.");
+        }
+
+        return authentication.getName();
+    }
 
     private void decreaseInventory(
             Storage storage,
@@ -108,26 +121,52 @@ public class StorageExitService {
     }
 
     public Page<StorageExit> getAllStorageExits(Pageable pageable) {
-        return storageExitRepository.findAll(pageable);
+        String email = getAuthenticatedEmail();
+
+        return storageExitRepository
+                .findAllByStorage_Owner_EmailIgnoreCase(email, pageable);
     }
 
-    public StorageExit getStorageExitById(Long id){
-        return storageExitRepository.findById(id).orElseThrow(() -> new NotFoundException("No existe un registro de egreso con el ID: "+ id));
+    public StorageExit getStorageExitById(Long id) {
+        String email = getAuthenticatedEmail();
+
+        return storageExitRepository
+                .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(id, email)
+                .orElseThrow(() -> new NotFoundException(
+                        "No existe un registro de egreso con el ID: " + id
+                ));
     }
 
-    public List<StorageExitDetail> getDetailsByExitId(Long id){
-        if(!storageExitRepository.existsById(id)){
-            throw new NotFoundException("No existe un egreso con el ID: "+id);
+    public List<StorageExitDetail> getDetailsByExitId(Long id) {
+        String email = getAuthenticatedEmail();
+
+        boolean belongsToUser = storageExitRepository
+                .existsByStorageExitIdAndStorage_Owner_EmailIgnoreCase(id, email);
+
+        if (!belongsToUser) {
+            throw new NotFoundException(
+                    "No existe un egreso con el ID: " + id
+            );
         }
-        return storageExitDetailRepository.findDetailsByStorageExitId(id);
+
+        return storageExitDetailRepository
+                .findDetailsByExitIdAndOwnerEmail(id, email);
     }
 
         @Transactional
     public StorageExit createStorageExit(StorageExitRequest request){
-        Storage storage = storageRepository.findByIdForUpdate(request.storageId())
-        .orElseThrow(() -> new NotFoundException(
-            "No existe un depósito con el ID: " + request.storageId()
-        ));
+        String email = getAuthenticatedEmail();
+
+        Storage storage = storageRepository
+                .findByIdAndOwner_EmailIgnoreCase(request.storageId(), email)
+                .orElseThrow(() -> new NotFoundException(
+                        "No existe un depósito con el ID: " + request.storageId()
+                ));
+
+        storage = storageRepository.findByIdForUpdate(storage.getId())
+                .orElseThrow(() -> new NotFoundException(
+                        "No existe un depósito con el ID: " + request.storageId()
+                ));
         StorageExit exit = new StorageExit();
         List<StorageExitDetail> listDetails = new ArrayList<>();
         for(StorageExitDetailRequest item : request.details()){
@@ -138,6 +177,17 @@ public class StorageExitService {
             .orElseThrow(() -> new NotFoundException(
                 "No existe un lote con el ID: " + item.batchId()
             ));
+            boolean batchBelongsToUser = storageBatchRepository
+                    .existsByIdAndStorageEntryDetail_StorageEntry_Storage_Owner_EmailIgnoreCase(
+                            batch.getId(),
+                            email
+                    );
+
+            if (!batchBelongsToUser) {
+                throw new NotFoundException(
+                        "No existe un lote con el ID: " + item.batchId()
+                );
+            }
             StorageExitDetail detalleAIngresar = storageExitDetailService.buildExitDetail(foodToSave, item, exit);
             detalleAIngresar.setStorageBatch(batch);
             listDetails.add(detalleAIngresar);

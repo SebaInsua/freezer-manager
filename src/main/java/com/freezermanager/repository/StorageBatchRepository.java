@@ -39,4 +39,23 @@ public interface StorageBatchRepository extends JpaRepository<StorageBatch, Long
     List<StorageBatch> findAllByStorageIdWithDetails(
         @Param("storageId") Long storageId
     );
+
+    boolean existsByIdAndStorageEntryDetail_StorageEntry_Storage_Owner_EmailIgnoreCase(
+            Long id,
+            String email
+    );
+
+    @Query("""
+        SELECT b FROM StorageBatch b
+        JOIN FETCH b.storageEntryDetail detail
+        JOIN FETCH detail.food food
+        JOIN FETCH detail.storageEntry entry
+        JOIN FETCH entry.storage storage
+        JOIN FETCH storage.owner owner
+        WHERE LOWER(owner.email) = LOWER(:email)
+        ORDER BY b.id ASC
+        """)
+    List<StorageBatch> findAllWithDetailsByOwnerEmail(
+            @Param("email") String email
+    );
 }

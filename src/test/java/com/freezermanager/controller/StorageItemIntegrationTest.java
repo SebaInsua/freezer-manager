@@ -1,34 +1,44 @@
+
 package com.freezermanager.controller;
 
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.comparesEqualTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.freezermanager.domain.food.Food;
 import com.freezermanager.domain.food.UnitOfMeasure;
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageItem;
+import com.freezermanager.domain.user.User;
 import com.freezermanager.repository.FoodRepository;
 import com.freezermanager.repository.StorageItemRepository;
 import com.freezermanager.repository.StorageRepository;
+import com.freezermanager.repository.UserRepository;
+import com.freezermanager.service.JwtService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-public class StorageItemIntegrationTest {
+class StorageItemIntegrationTest {
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -41,10 +51,87 @@ public class StorageItemIntegrationTest {
     @Autowired
     private FoodRepository foodRepository;
 
+    @Autowired
+    private UserRepository userRepository;
 
-        @Test
-    public void testIntegrationWhenStorageItemItsEmpty() throws Exception {
-        mockMvc.perform(get("/api/v1/storageitems"))
+    @Autowired
+    private JwtService jwtService;
+
+    private String uniqueEmail() {
+        return "storage-item-" + UUID.randomUUID() + "@example.com";
+    }
+
+    private User createUser() {
+        User user = new User();
+        user.setEmail(uniqueEmail());
+        user.setPassword("test-password-hash");
+        return userRepository.save(user);
+    }
+
+    private Storage createStorage(User owner, BigDecimal capacity) {
+        Storage storage = new Storage();
+        storage.setCapacidadLitros(capacity);
+        storage.setOwner(owner);
+        return storageRepository.save(storage);
+    }
+
+    private Storage createStorage(String email, BigDecimal capacity) {
+        User owner = new User();
+        owner.setEmail(email);
+        owner.setPassword("test-password-hash");
+        owner = userRepository.save(owner);
+
+        return createStorage(owner, capacity);
+    }
+
+    private RequestPostProcessor authenticatedAs(User user) {
+        String token = jwtService.generateToken(user.getEmail());
+
+        return request -> {
+            request.addHeader(
+                    HttpHeaders.AUTHORIZATION,
+                    "Bearer " + token
+            );
+            return request;
+        };
+    }
+
+    private RequestPostProcessor authenticatedAs(Storage storage) {
+        return authenticatedAs(storage.getOwner());
+    }
+
+    private Set<UnitOfMeasure> supportedUnits() {
+        Set<UnitOfMeasure> units = new LinkedHashSet<>();
+        units.add(UnitOfMeasure.KG);
+        units.add(UnitOfMeasure.G);
+        return units;
+    }
+
+    private Food createFood(String name) {
+        Food food = new Food();
+        food.setName(name + "-" + UUID.randomUUID());
+        food.setUnitOfMeasures(supportedUnits());
+        return foodRepository.save(food);
+    }
+
+    private StorageItem createStorageItem(
+            Storage storage,
+            Food food,
+            BigDecimal quantity
+    ) {
+        StorageItem item = new StorageItem();
+        item.setStorage(storage);
+        item.setFood(food);
+        item.setCantidad(quantity);
+        return storageItemRepository.save(item);
+    }
+
+    @Test
+    void testIntegrationWhenStorageItemItsEmpty() throws Exception {
+        User user = createUser();
+
+        mockMvc.perform(get("/api/v1/storageitems")
+                        .with(authenticatedAs(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(0)))
                 .andExpect(jsonPath("$.empty").value(true))
@@ -52,150 +139,113 @@ public class StorageItemIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(0));
     }
 
+    @Test
+    void testIntegrationWhenExistsStoragesItems() throws Exception {
+        User owner = createUser();
 
-        @Test
-    public void testIntegrationWhenExistsStoragesItems() throws Exception{
-        Storage storage = new Storage();
-        Storage storage2 = new Storage();
-        storage.setCapacidadLitros(BigDecimal.valueOf(120));
-        storage2.setCapacidadLitros(BigDecimal.valueOf(200));
-        storageRepository.save(storage);
-        storageRepository.save(storage2);
+        Storage storage = createStorage(owner, BigDecimal.valueOf(120));
+        Storage storage2 = createStorage(owner, BigDecimal.valueOf(200));
 
-        Set<UnitOfMeasure> unitOfMeasures = new LinkedHashSet<>();
-        unitOfMeasures.add(UnitOfMeasure.KG);
-        unitOfMeasures.add(UnitOfMeasure.G);
-        Food food = new Food();
-        Food food2 = new Food();
-        food.setName("Tomate");
-        food.setUnitOfMeasures(unitOfMeasures);
-        food2.setName("Pescado");
-        food2.setUnitOfMeasures(unitOfMeasures);
-        foodRepository.save(food);
-        foodRepository.save(food2);
+        Food food = createFood("Tomate");
+        Food food2 = createFood("Pescado");
 
-        StorageItem item = new StorageItem();
-        StorageItem item2 = new StorageItem();
-        item.setStorage(storage);
-        item.setFood(food);
-        item.setCantidad(BigDecimal.valueOf(20));
-        item2.setStorage(storage2);
-        item2.setFood(food2);
-        item2.setCantidad(BigDecimal.valueOf(10));
-        storageItemRepository.save(item);
-        storageItemRepository.save(item2);
+        createStorageItem(storage, food, BigDecimal.valueOf(20));
+        createStorageItem(storage2, food2, BigDecimal.valueOf(10));
 
-        mockMvc.perform(get("/api/v1/storageitems"))
+        mockMvc.perform(get("/api/v1/storageitems")
+                        .with(authenticatedAs(owner))
+                        .param("sort", "id,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
-                .andExpect(jsonPath("$.content[0].storage.capacidadLitros", comparesEqualTo(120)))
-                .andExpect(jsonPath("$.content[0].food.name").value("Tomate"))
+                .andExpect(jsonPath("$.content[0].storage.capacidadLitros",
+                        comparesEqualTo(120)))
+                .andExpect(jsonPath("$.content[0].food.name",
+                        org.hamcrest.Matchers.startsWith("Tomate")))
                 .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(20)))
-                .andExpect(jsonPath("$.content[1].storage.capacidadLitros", comparesEqualTo(200)))
-                .andExpect(jsonPath("$.content[1].food.name").value("Pescado"))
+                .andExpect(jsonPath("$.content[1].storage.capacidadLitros",
+                        comparesEqualTo(200)))
+                .andExpect(jsonPath("$.content[1].food.name",
+                        org.hamcrest.Matchers.startsWith("Pescado")))
                 .andExpect(jsonPath("$.content[1].cantidad", comparesEqualTo(10)))
                 .andExpect(jsonPath("$.totalElements").value(2))
                 .andExpect(jsonPath("$.totalPages").value(1));
     }
 
-        @Test
-    public void testIntegrationStorageItemById() throws Exception{
-        Storage storage = new Storage();
-        storage.setCapacidadLitros(BigDecimal.valueOf(120));
-        storageRepository.save(storage);
+    @Test
+    void testIntegrationStorageItemById() throws Exception {
+        User owner = createUser();
+        Storage storage = createStorage(owner, BigDecimal.valueOf(120));
+        Food food = createFood("Tomate");
 
-        Set<UnitOfMeasure> unitOfMeasures = new LinkedHashSet<>();
-        unitOfMeasures.add(UnitOfMeasure.KG);
-        unitOfMeasures.add(UnitOfMeasure.G);
-        Food food = new Food();
-        food.setName("Tomate");
-        food.setUnitOfMeasures(unitOfMeasures);
-        foodRepository.save(food);
+        StorageItem item = createStorageItem(
+                storage,
+                food,
+                BigDecimal.valueOf(20)
+        );
 
-        StorageItem item = new StorageItem();
-        item.setStorage(storage);
-        item.setFood(food);
-        item.setCantidad(BigDecimal.valueOf(20));
-        StorageItem storageItemGuardado = storageItemRepository.save(item);
-        
-        mockMvc.perform(get("/api/v1/storageitems/{id}",storageItemGuardado.getId()))
+        mockMvc.perform(get("/api/v1/storageitems/{id}", item.getId())
+                        .with(authenticatedAs(owner)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(storageItemGuardado.getId()))
-                .andExpect(jsonPath("$.storage.capacidadLitros",comparesEqualTo(120)))
-                .andExpect(jsonPath("$.food.name").value("Tomate"))
+                .andExpect(jsonPath("$.id").value(item.getId()))
+                .andExpect(jsonPath("$.storage.capacidadLitros",
+                        comparesEqualTo(120)))
+                .andExpect(jsonPath("$.food.name",
+                        org.hamcrest.Matchers.startsWith("Tomate")))
                 .andExpect(jsonPath("$.cantidad", comparesEqualTo(20)));
     }
 
-        @Test
-    public void testIntegrationWhenStoragesItemsDoesntExists() throws Exception{
-        Storage storage = new Storage();
-        storage.setCapacidadLitros(BigDecimal.valueOf(120));
-        storageRepository.save(storage);
+    @Test
+    void testIntegrationWhenStoragesItemsDoesntExists() throws Exception {
+        User owner = createUser();
+        Storage storage = createStorage(owner, BigDecimal.valueOf(120));
+        Food food = createFood("Tomate");
 
-        Set<UnitOfMeasure> unitOfMeasures = new LinkedHashSet<>();
-        unitOfMeasures.add(UnitOfMeasure.KG);
-        unitOfMeasures.add(UnitOfMeasure.G);
-        Food food = new Food();
-        food.setName("Tomate");
-        food.setUnitOfMeasures(unitOfMeasures);
-        foodRepository.save(food);
-        
-        StorageItem item = new StorageItem();
-        item.setStorage(storage);
-        item.setFood(food);
-        item.setCantidad(BigDecimal.valueOf(20));
+        StorageItem item = createStorageItem(
+                storage,
+                food,
+                BigDecimal.valueOf(20)
+        );
 
-        StorageItem storageItemGuardado = storageItemRepository.save(item);
-        Long idInexistente = storageItemGuardado.getId()+1;
-        while (storageItemRepository.existsById(idInexistente)) {
-            idInexistente += 1;
+        Long nonexistentId = item.getId() + 1;
+
+        while (storageItemRepository.existsById(nonexistentId)) {
+            nonexistentId++;
         }
-        String messageExpected = "No existe un elemento en el inventario con el ID: " + idInexistente;
 
-        mockMvc.perform(get("/api/v1/storageitems/{id}",idInexistente))
+        String expectedMessage =
+                "No existe un elemento en el inventario con el ID: " + nonexistentId;
+
+        mockMvc.perform(get("/api/v1/storageitems/{id}", nonexistentId)
+                        .with(authenticatedAs(owner)))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value(messageExpected))
+                .andExpect(jsonPath("$.message").value(expectedMessage))
                 .andExpect(jsonPath("$.status").value(404));
     }
 
-
-        @Test
-    public void testIntegrationStorageItemsWithPagination() throws Exception {
-        Storage storage = new Storage();
-        storage.setCapacidadLitros(BigDecimal.valueOf(120));
-        storageRepository.save(storage);
-
-        Set<UnitOfMeasure> units = new LinkedHashSet<>();
-        units.add(UnitOfMeasure.KG);
-        units.add(UnitOfMeasure.G);
-
-        Food food = new Food();
-        food.setName("Tomate");
-        food.setUnitOfMeasures(units);
-        foodRepository.save(food);
+    @Test
+    void testIntegrationStorageItemsWithPagination() throws Exception {
+        User owner = createUser();
 
         for (int i = 1; i <= 3; i++) {
-            StorageItem item = new StorageItem();
+            Storage storage = createStorage(
+                    owner,
+                    BigDecimal.valueOf(100 + i)
+            );
 
-            Storage storageItem = new Storage();
-            storageItem.setCapacidadLitros(BigDecimal.valueOf(100 + i));
-            storageRepository.save(storageItem);
+            Food food = createFood("Alimento " + i);
 
-            Food foodItem = new Food();
-            foodItem.setName("Alimento " + i);
-            foodItem.setUnitOfMeasures(units);
-            foodRepository.save(foodItem);
-
-            item.setStorage(storageItem);
-            item.setFood(foodItem);
-            item.setCantidad(BigDecimal.valueOf(i));
-
-            storageItemRepository.save(item);
+            createStorageItem(
+                    storage,
+                    food,
+                    BigDecimal.valueOf(i)
+            );
         }
 
         mockMvc.perform(get("/api/v1/storageitems")
-                .param("page", "0")
-                .param("size", "1"))
+                        .with(authenticatedAs(owner))
+                        .param("page", "0")
+                        .param("size", "1")
+                        .param("sort", "id,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(1)))
@@ -203,85 +253,60 @@ public class StorageItemIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(3));
     }
 
-        @Test
-    public void testIntegrationStorageItemsWithSecondPage() throws Exception {
-        Storage storage = new Storage();
-        storage.setCapacidadLitros(BigDecimal.valueOf(120));
-        storageRepository.save(storage);
-
-        Set<UnitOfMeasure> units = new LinkedHashSet<>();
-        units.add(UnitOfMeasure.KG);
-        units.add(UnitOfMeasure.G);
-
-        Food food = new Food();
-        food.setName("Tomate");
-        food.setUnitOfMeasures(units);
-        foodRepository.save(food);
+    @Test
+    void testIntegrationStorageItemsWithSecondPage() throws Exception {
+        User owner = createUser();
 
         for (int i = 1; i <= 3; i++) {
-            StorageItem item = new StorageItem();
+            Storage storage = createStorage(
+                    owner,
+                    BigDecimal.valueOf(100 + i)
+            );
 
-            Storage storageItem = new Storage();
-            storageItem.setCapacidadLitros(BigDecimal.valueOf(100 + i));
-            storageRepository.save(storageItem);
+            Food food = createFood("Alimento " + i);
 
-            Food foodItem = new Food();
-            foodItem.setName("Alimento " + i);
-            foodItem.setUnitOfMeasures(units);
-            foodRepository.save(foodItem);
-
-            item.setStorage(storageItem);
-            item.setFood(foodItem);
-            item.setCantidad(BigDecimal.valueOf(i));
-
-            storageItemRepository.save(item);
+            createStorageItem(
+                    storage,
+                    food,
+                    BigDecimal.valueOf(i)
+            );
         }
 
         mockMvc.perform(get("/api/v1/storageitems")
-                .param("page", "1")
-                .param("size", "1"))
+                        .with(authenticatedAs(owner))
+                        .param("page", "1")
+                        .param("size", "1")
+                        .param("sort", "id,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(2)))
-                .andExpect(jsonPath("$.totalElements").value(3));
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(3));
     }
 
-        @Test
-    public void testIntegrationStorageItemsWithDescendingSort() throws Exception {
-        Storage storage = new Storage();
-        storage.setCapacidadLitros(BigDecimal.valueOf(120));
-        storageRepository.save(storage);
 
-        Set<UnitOfMeasure> units = new LinkedHashSet<>();
-        units.add(UnitOfMeasure.KG);
-        units.add(UnitOfMeasure.G);
-
-        Food food = new Food();
-        food.setName("Tomate");
-        food.setUnitOfMeasures(units);
-        foodRepository.save(food);
+    @Test
+    void testIntegrationStorageItemsWithDescendingSort() throws Exception {
+        User owner = createUser();
 
         for (int i = 1; i <= 3; i++) {
-            StorageItem item = new StorageItem();
+            Storage storage = createStorage(
+                    owner,
+                    BigDecimal.valueOf(100 + i)
+            );
 
-            Storage storageItem = new Storage();
-            storageItem.setCapacidadLitros(BigDecimal.valueOf(100 + i));
-            storageRepository.save(storageItem);
+            Food food = createFood("Alimento " + i);
 
-            Food foodItem = new Food();
-            foodItem.setName("Alimento " + i);
-            foodItem.setUnitOfMeasures(units);
-            foodRepository.save(foodItem);
-
-            item.setStorage(storageItem);
-            item.setFood(foodItem);
-            item.setCantidad(BigDecimal.valueOf(i));
-
-            storageItemRepository.save(item);
+            createStorageItem(
+                    storage,
+                    food,
+                    BigDecimal.valueOf(i)
+            );
         }
 
         mockMvc.perform(get("/api/v1/storageitems")
-                .param("sort", "id,desc"))
+                        .with(authenticatedAs(owner))
+                        .param("sort", "id,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(3)))
                 .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(3)))
@@ -289,4 +314,23 @@ public class StorageItemIntegrationTest {
                 .andExpect(jsonPath("$.content[2].cantidad", comparesEqualTo(1)));
     }
 
+
+    @Test
+    void testIntegrationStorageItemsCannotBeAccessedByAnotherUser() throws Exception {
+        User owner = createUser();
+        User otherUser = createUser();
+
+        Storage storage = createStorage(owner, BigDecimal.valueOf(120));
+        Food food = createFood("Tomate");
+
+        StorageItem item = createStorageItem(
+                storage,
+                food,
+                BigDecimal.valueOf(20)
+        );
+
+        mockMvc.perform(get("/api/v1/storageitems/{id}", item.getId())
+                        .with(authenticatedAs(otherUser)))
+                .andExpect(status().isNotFound());
+    }
 }
