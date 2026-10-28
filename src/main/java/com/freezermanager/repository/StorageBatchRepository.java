@@ -27,4 +27,16 @@ public interface StorageBatchRepository extends JpaRepository<StorageBatch, Long
     ORDER BY b.id ASC
     """)
     List<StorageBatch> findAllWithDetails();
+
+    @Query("""
+    SELECT b FROM StorageBatch b
+    JOIN FETCH b.storageEntryDetail detail
+    JOIN FETCH detail.food food
+    JOIN FETCH detail.storageEntry entry
+    WHERE entry.storage.id = :storageId
+    ORDER BY b.id ASC
+    """)
+    List<StorageBatch> findAllByStorageIdWithDetails(
+        @Param("storageId") Long storageId
+    );
 }

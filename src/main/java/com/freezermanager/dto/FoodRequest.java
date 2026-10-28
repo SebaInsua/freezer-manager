@@ -1,5 +1,6 @@
 package com.freezermanager.dto;
 
+import java.math.BigDecimal;
 import java.util.Set;
 
 import com.freezermanager.domain.food.FoodCategory;
@@ -18,5 +19,7 @@ public record FoodRequest(
     @NotEmpty(message = "No puede haber un alimento sin unidades de medida.")
     Set<UnitOfMeasure> unitOfMeasures,
     @Positive(message = "La vida útil predeterminada debe ser mayor que cero.")
-    Integer defaultShelfLifeDays
+    Integer defaultShelfLifeDays,
+    @Positive(message = "El peso estimado por unidad debe ser mayor que cero.")
+    BigDecimal estimatedWeightPerUnitKg
 ){}

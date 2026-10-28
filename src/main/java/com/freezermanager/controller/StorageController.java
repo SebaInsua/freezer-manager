@@ -12,6 +12,8 @@ import org.springframework.data.web.PageableDefault;
 
 import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.dto.ErrorResponse;
+import com.freezermanager.dto.StorageCapacityResponse;
+import com.freezermanager.service.StorageCapacityService;
 import com.freezermanager.service.StorageService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/storages")
 public class StorageController {
     private final StorageService storageService;
+    private final StorageCapacityService storageCapacityService;
 
     @Operation(
         summary = "Listar almacenamientos",
@@ -84,5 +87,44 @@ public class StorageController {
     @GetMapping("/{id}")
     public ResponseEntity<Storage> getStorageById(@PathVariable Long id) {
         return ResponseEntity.ok(storageService.getStorageById(id));
+    }
+
+    @Operation(
+        summary = "Consultar capacidad estimada de un almacenamiento",
+        description = """
+            Calcula la carga estimada a partir de los lotes activos con cantidad disponible.
+            Considera un límite recomendado del 80% de la capacidad nominal y un factor
+            aproximado de 3.5 litros por kilogramo. Para alimentos registrados por unidad,
+            utiliza el peso estimado por unidad configurado en el alimento.
+            Si algún lote por unidad no tiene ese peso configurado, la estimación será parcial.
+            Estos valores son estimaciones operativas, no una medición exacta del espacio físico.
+            """
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Capacidad estimada obtenida correctamente"
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "No existe un almacenamiento con ese identificador",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Error interno del servidor",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)
+            )
+        )
+    })
+    @GetMapping("/{id}/capacity")
+    public ResponseEntity<StorageCapacityResponse> getStorageCapacity(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(storageCapacityService.getCapacity(id));
     }
 }

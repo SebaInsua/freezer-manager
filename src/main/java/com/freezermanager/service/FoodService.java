@@ -68,6 +68,9 @@ public class FoodService {
         foodToSave.setCategory(request.category());
         foodToSave.setUnitOfMeasures(request.unitOfMeasures());
         foodToSave.setDefaultShelfLifeDays(request.defaultShelfLifeDays());
+        foodToSave.setEstimatedWeightPerUnitKg(
+            request.estimatedWeightPerUnitKg()
+        );
         return foodRepository.save(foodToSave);
     }
 
@@ -82,6 +85,9 @@ public class FoodService {
         foodToUpdate.setCategory(request.category());
         foodToUpdate.setUnitOfMeasures(request.unitOfMeasures());
         foodToUpdate.setDefaultShelfLifeDays(request.defaultShelfLifeDays());
+        foodToUpdate.setEstimatedWeightPerUnitKg(
+            request.estimatedWeightPerUnitKg()
+        );
         return foodToUpdate;
     }
 
