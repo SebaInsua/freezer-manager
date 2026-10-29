@@ -58,4 +58,18 @@ public interface StorageBatchRepository extends JpaRepository<StorageBatch, Long
     List<StorageBatch> findAllWithDetailsByOwnerEmail(
             @Param("email") String email
     );
+
+    @Query("""
+        SELECT b FROM StorageBatch b
+        JOIN FETCH b.storageEntryDetail detail
+        JOIN FETCH detail.food food
+        JOIN FETCH detail.storageEntry entry
+        WHERE entry.storage.id = :storageId
+        AND b.active = true
+        AND b.availableQuantity > 0
+        ORDER BY b.id ASC
+        """)
+    List<StorageBatch> findActiveBatchesByStorageIdWithDetails(
+        @Param("storageId") Long storageId
+    );
 }

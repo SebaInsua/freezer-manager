@@ -92,7 +92,7 @@ public class StorageEntryControllerIntegrationTest {
     @Autowired
     private StorageBatchRepository storageBatchRepository;
 
-        @Test
+    @Test
     public void testIntegrationWhenStoragesEntriesItsEmpty() throws Exception {
         mockMvc.perform(authenticatedGet("/api/v1/storagesentry"))
                 .andExpect(status().isOk())
@@ -102,8 +102,8 @@ public class StorageEntryControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(0));
     }
 
-        @Test
-    public void testIntegrationWhenExistsStorages() throws Exception{
+    @Test
+    public void testIntegrationWhenExistsStorages() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
         storage.setOwner(testUser);
@@ -119,6 +119,7 @@ public class StorageEntryControllerIntegrationTest {
 
         mockMvc.perform(authenticatedGet("/api/v1/storagesentry"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$..password").doesNotExist())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].storage.capacidadLitros",
                         comparesEqualTo(120)))
@@ -128,8 +129,8 @@ public class StorageEntryControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(1));
     }
 
-        @Test
-    public void testIntegrationStorageEntryById() throws Exception{
+    @Test
+    public void testIntegrationStorageEntryById() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
         storage.setOwner(testUser);
@@ -137,14 +138,23 @@ public class StorageEntryControllerIntegrationTest {
 
         StorageEntry entryGuardado = createEntryWithDetail(storage, "Carne");
 
-        mockMvc.perform(authenticatedGet("/api/v1/storagesentry/{id}",entryGuardado.getStorageEntryId()))
-                .andDo(print())
+        mockMvc.perform(
+                authenticatedGet(
+                        "/api/v1/storagesentry/{id}",
+                        entryGuardado.getStorageEntryId()
+                ))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.storageEntryId").value(entryGuardado.getStorageEntryId()))
-                .andExpect(jsonPath("$.storage.capacidadLitros", comparesEqualTo(120)));
+                .andExpect(jsonPath("$..password").doesNotExist())
+                .andExpect(jsonPath("$.storageEntryId")
+                        .value(entryGuardado.getStorageEntryId()))
+                .andExpect(jsonPath("$.storage.capacidadLitros",
+                        comparesEqualTo(120)))
+                .andExpect(jsonPath("$.details", hasSize(1)))
+                .andExpect(jsonPath("$.details[0].food.name").value("Carne"))
+                .andExpect(jsonPath("$.storage.owner").doesNotExist());
     }
 
-        @Test
+    @Test
     public void testIntegrationWhenStoragesEntriesDoesntExists() throws Exception{
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -166,7 +176,7 @@ public class StorageEntryControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(404));
     }
 
-        @Test
+    @Test
     public void testIntegrationWhenStorageEntryHasDetails() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -176,18 +186,24 @@ public class StorageEntryControllerIntegrationTest {
         StorageEntry entryGuardado = createEntryWithDetail(storage, "Tomate");
 
         mockMvc.perform(
-                authenticatedGet("/api/v1/storagesentry/{id}/details",
-                        entryGuardado.getStorageEntryId()))
+                authenticatedGet(
+                        "/api/v1/storagesentry/{id}/details",
+                        entryGuardado.getStorageEntryId()
+                ))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$..password").doesNotExist())
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].cantidad",
-                        comparesEqualTo(2)))
-                .andExpect(jsonPath("$[0].selectedUnit")
-                        .value("KG"));
+                .andExpect(jsonPath("$[0].cantidad", comparesEqualTo(2)))
+                .andExpect(jsonPath("$[0].selectedUnit").value("KG"))
+                .andExpect(jsonPath("$[0].food.name").value("Tomate"))
+                .andExpect(jsonPath("$[0].storageEntry").doesNotExist())
+                .andExpect(jsonPath("$[0].food.owner").doesNotExist());
     }
 
-        @Test
-    public void testIntegrationCreateStorageEntryAndCreateStorageItem() throws Exception {
+    @Test
+    public void testIntegrationCreateStorageEntryAndCreateStorageItem()
+            throws Exception {
+
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
         storage.setOwner(testUser);
@@ -216,45 +232,50 @@ public class StorageEntryControllerIntegrationTest {
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$..password").doesNotExist())
+                .andExpect(jsonPath("$.storage.owner").doesNotExist())
+                .andExpect(jsonPath("$.storage.items").doesNotExist())
                 .andExpect(jsonPath("$.storageEntryId").isNumber())
                 .andExpect(jsonPath("$.movementDateTime")
                         .value("2026-10-19T12:00:00"))
                 .andExpect(jsonPath("$.details", hasSize(1)))
                 .andExpect(jsonPath("$.details[0].food.foodId")
                         .value(savedFood.getFoodId()))
+                .andExpect(jsonPath("$.details[0].food.owner").doesNotExist())
+                .andExpect(jsonPath("$.details[0].storageEntry").doesNotExist())
                 .andExpect(jsonPath("$.details[0].selectedUnit").value("KG"))
                 .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(3)));
 
         StorageItem savedItem = storageItemRepository
-                .findByStorageIdAndFoodId(savedStorage.getId(), savedFood.getFoodId())
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
                 .orElseThrow();
 
-        org.junit.jupiter.api.Assertions.assertEquals(
+        assertEquals(
                 0,
                 savedItem.getCantidad().compareTo(BigDecimal.valueOf(3000)));
+
         List<StorageBatch> batches = storageBatchRepository.findAll();
         assertEquals(1, batches.size());
 
         StorageBatch savedBatch = batches.get(0);
 
         assertEquals(
-            0,
-            savedBatch.getInitialQuantity().compareTo(BigDecimal.valueOf(3000))
-        );
+                0,
+                savedBatch.getInitialQuantity().compareTo(BigDecimal.valueOf(3000)));
 
         assertEquals(
-            0,
-            savedBatch.getAvailableQuantity().compareTo(BigDecimal.valueOf(3000))
-        );
+                0,
+                savedBatch.getAvailableQuantity().compareTo(BigDecimal.valueOf(3000)));
 
         assertEquals(
-            savedBatch.getStorageEntryDetail().getEntryDetailId(),
-            storageEntryRepository.findAll().get(0)
-                .getDetails().get(0).getEntryDetailId()
-        );
+                savedBatch.getStorageEntryDetail().getEntryDetailId(),
+                storageEntryRepository.findAll().get(0)
+                        .getDetails().get(0).getEntryDetailId());
     }
 
-        @Test
+    @Test
     public void testIntegrationCreateStorageEntryWithActualExpirationDate() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -295,7 +316,7 @@ public class StorageEntryControllerIntegrationTest {
         assertEquals(ExpirationDateType.ACTUAL, batch.getExpirationDateType());
     }
 
-        @Test
+    @Test
     public void testIntegrationCreateStorageEntryWithEstimatedExpirationDate() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -335,7 +356,7 @@ public class StorageEntryControllerIntegrationTest {
         assertEquals(ExpirationDateType.ESTIMATED, batch.getExpirationDateType());
     }
 
-        @Test
+    @Test
     public void testIntegrationCreateStorageEntryAndIncreaseExistingStorageItem() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -383,7 +404,7 @@ public class StorageEntryControllerIntegrationTest {
                 updatedItem.getCantidad().compareTo(BigDecimal.valueOf(5000)));
     }
 
-        @Test
+    @Test
     public void testIntegrationInvalidUnitDoesNotUpdateInventory() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -435,7 +456,7 @@ public class StorageEntryControllerIntegrationTest {
                 storageEntryRepository.count());
     }
 
-        @Test
+    @Test
     public void testIntegrationInactiveFoodDoesNotCreateStorageEntryOrUpdateInventory() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -643,7 +664,7 @@ public class StorageEntryControllerIntegrationTest {
                 savedItem.getCantidad().compareTo(BigDecimal.valueOf(2500)));
     }
 
-        @Test
+    @Test
     public void testIntegrationEntryWithZeroQuantityIsRejected() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -683,7 +704,7 @@ public class StorageEntryControllerIntegrationTest {
             .isEmpty());
     }
 
-        @Test
+    @Test
     public void testIntegrationEntryWithNegativeQuantityIsRejected() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -723,7 +744,7 @@ public class StorageEntryControllerIntegrationTest {
             .isEmpty());
     }
 
-        @Test
+    @Test
     public void testIntegrationEntryWithNullQuantityIsRejected() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -764,7 +785,7 @@ public class StorageEntryControllerIntegrationTest {
     }
 
 
-        @Test
+    @Test
     public void testIntegrationStorageEntriesWithPagination() throws Exception {
         Storage storage1 = new Storage();
         storage1.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -794,7 +815,7 @@ public class StorageEntryControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(2));
     }
 
-        @Test
+    @Test
     public void testIntegrationStorageEntriesWithSecondPage() throws Exception {
         Storage storage1 = new Storage();
         storage1.setCapacidadLitros(BigDecimal.valueOf(120));
@@ -824,7 +845,7 @@ public class StorageEntryControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(2));
     }
 
-        @Test
+    @Test
     public void testIntegrationStorageEntriesWithDescendingSort() throws Exception {
         Storage storage1 = new Storage();
         storage1.setCapacidadLitros(BigDecimal.valueOf(120));
