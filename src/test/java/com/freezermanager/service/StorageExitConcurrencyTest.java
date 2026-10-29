@@ -301,6 +301,21 @@ class StorageExitConcurrencyTest {
                 "El stock final debe ser de 300 g"
             );
 
+            StorageBatch remainingBatch = storageBatchRepository
+                .findById(batchId)
+                .orElseThrow();
+
+            assertEquals(
+                0,
+                new BigDecimal("300").compareTo(remainingBatch.getAvailableQuantity()),
+                "El stock disponible del lote debe ser de 300 g"
+            );
+
+            assertTrue(
+                remainingBatch.isActive(),
+                "El lote debe continuar activo porque todavía tiene stock"
+            );
+
             assertEquals(
                 1,
                 storageExitRepository.findAll().stream()

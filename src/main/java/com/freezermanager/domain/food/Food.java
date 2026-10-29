@@ -3,6 +3,8 @@ package com.freezermanager.domain.food;
 import java.math.BigDecimal;
 import java.util.Set;
 
+import com.freezermanager.domain.user.User;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -14,6 +16,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -33,7 +36,7 @@ public class Food {
     private Long foodId;
 
     @NotBlank
-    @Column(nullable = false,unique = true)
+    @Column(nullable = false)
     private String name;
 
     @Enumerated(EnumType.STRING)
@@ -56,4 +59,8 @@ public class Food {
     @Positive(message = "El peso estimado por unidad debe ser mayor que cero.")
     @Column(name = "estimated_weight_per_unit_kg", precision = 10, scale = 3)
     private BigDecimal estimatedWeightPerUnitKg;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private User owner;
 }

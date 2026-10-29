@@ -18,6 +18,7 @@ import com.freezermanager.repository.FoodRepository;
 import com.freezermanager.repository.UserRepository;
 import com.freezermanager.service.JwtService;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.web.FilterChainProxy;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -54,6 +55,9 @@ public class FoodControllerIntegrationTest {
         @Autowired
         private JwtService jwtService;
 
+        @Autowired
+        private FilterChainProxy springSecurityFilterChain;
+
         private MockMvc mockMvc;
 
         @BeforeEach
@@ -70,6 +74,7 @@ public class FoodControllerIntegrationTest {
 
         mockMvc = MockMvcBuilders
                 .webAppContextSetup(webApplicationContext)
+                .addFilters(springSecurityFilterChain)
                 .defaultRequest(defaultRequest)
                 .build();
         }
@@ -450,7 +455,7 @@ public class FoodControllerIntegrationTest {
                         .andExpect(jsonPath("$.totalElements").value(1));
         }
 
-                @Test
+        @Test
         public void testIntegrationGetFoodsWithActiveTrue() throws Exception {
         foodRepository.save(createFood("Pollo", true));
         foodRepository.save(createFood("Pescado", false));
@@ -465,7 +470,7 @@ public class FoodControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(2));
         }
 
-                @Test
+        @Test
         public void testIntegrationGetFoodsWithActiveFalse() throws Exception {
                 foodRepository.save(createFood("Pollo", true));
                 foodRepository.save(createFood("Pescado", false));
@@ -481,7 +486,7 @@ public class FoodControllerIntegrationTest {
         }
 
 
-                @Test
+        @Test
         public void testIntegrationUpdateFoodWithIncompatibleUnits() throws Exception {
                 String createBody = """
                         {
@@ -518,7 +523,7 @@ public class FoodControllerIntegrationTest {
         }
 
 
-                @Test
+        @Test
         public void testIntegrationGetFoodsWithPagination() throws Exception {
         foodRepository.save(createFood("Arroz", true));
         foodRepository.save(createFood("Banana", true));
@@ -539,7 +544,7 @@ public class FoodControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(3));
         }
 
-                @Test
+        @Test
         public void testIntegrationGetFoodsWithSecondPage() throws Exception {
         foodRepository.save(createFood("Arroz", true));
         foodRepository.save(createFood("Banana", true));
@@ -560,7 +565,7 @@ public class FoodControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(3));
         }
 
-                @Test
+        @Test
         public void testIntegrationGetFoodsWithDescendingSort() throws Exception {
         foodRepository.save(createFood("Arroz", true));
         foodRepository.save(createFood("Banana", true));
@@ -575,7 +580,7 @@ public class FoodControllerIntegrationTest {
                 .andExpect(jsonPath("$.content[2].name").value("Arroz"));
         }
 
-                @Test
+        @Test
         public void testIntegrationGetInactiveFoodsWithPagination() throws Exception {
         foodRepository.save(createFood("Arroz", false));
         foodRepository.save(createFood("Banana", false));
@@ -598,6 +603,96 @@ public class FoodControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(4))
                 .andExpect(jsonPath("$.totalPages").value(2));
         }
+
+        @Test
+        public void testIntegrationUserCannotAccessAnotherUsersFood()
+                throws Exception {
+
+        User otherUser = new User();
+        otherUser.setEmail("other-food-test@example.com");
+        otherUser.setPassword("test-password-hash");
+        User savedOtherUser = userRepository.save(otherUser);
+
+        Food food = new Food();
+        food.setName("Alimento privado");
+        food.setCategory(FoodCategory.MEAT);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        food.setActive(true);
+        food.setOwner(savedOtherUser);
+
+        Food savedFood = foodRepository.save(food);
+
+        mockMvc.perform(get("/api/v1/foods/{id}", savedFood.getFoodId()))
+                .andExpect(status().isNotFound());
+        }
+
+
+        @Test
+        public void testIntegrationUserCannotUpdateAnotherUsersFood()
+                throws Exception {
+
+                User otherUser = new User();
+                otherUser.setEmail("other-update-test@example.com");
+                otherUser.setPassword("test-password-hash");
+                User savedOtherUser = userRepository.save(otherUser);
+
+                Food food = new Food();
+                food.setName("Alimento ajeno");
+                food.setCategory(FoodCategory.MEAT);
+                food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+                food.setActive(true);
+                food.setOwner(savedOtherUser);
+
+                Food savedFood = foodRepository.save(food);
+
+                String requestBody = """
+                        {
+                                "name": "Alimento modificado",
+                                "category": "MEAT",
+                                "unitOfMeasures": ["KG"]
+                        }
+                        """;
+
+                mockMvc.perform(put("/api/v1/foods/{id}", savedFood.getFoodId())
+                                .contentType("application/json")
+                                .content(requestBody))
+                        .andExpect(status().isNotFound());
+        }
+
+
+        @Test
+        public void testIntegrationUserCannotDeactivateAnotherUsersFood()
+                throws Exception {
+
+                User otherUser = new User();
+                otherUser.setEmail("other-deactivate-test@example.com");
+                otherUser.setPassword("test-password-hash");
+                User savedOtherUser = userRepository.save(otherUser);
+
+                Food food = new Food();
+                food.setName("Alimento ajeno");
+                food.setCategory(FoodCategory.MEAT);
+                food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+                food.setActive(true);
+                food.setOwner(savedOtherUser);
+
+                Food savedFood = foodRepository.save(food);
+
+                mockMvc.perform(
+                                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                        .patch(
+                                                "/api/v1/foods/{id}/deactivate",
+                                                savedFood.getFoodId()
+                                        )
+                        )
+                        .andExpect(status().isNotFound());
+
+                Food foodAfterRequest = foodRepository.findById(savedFood.getFoodId())
+                        .orElseThrow();
+
+                assertTrue(foodAfterRequest.isActive());
+        }
+
 
 
         private Food createFood(String name, boolean active) {
