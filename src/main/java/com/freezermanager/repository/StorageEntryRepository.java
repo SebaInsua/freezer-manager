@@ -13,17 +13,14 @@ public interface StorageEntryRepository
         extends JpaRepository<StorageEntry, Long> {
 
     Page<StorageEntry> findAllByStorage_Owner_EmailIgnoreCase(
-            String email,
-            Pageable pageable
-    );
+        String email,
+        Pageable pageable);
 
     Optional<StorageEntry> findByStorageEntryIdAndStorage_Owner_EmailIgnoreCase(
-            Long id,
-            String email
-    );
+        Long id,
+        String email);
 
     boolean existsByStorageEntryIdAndStorage_Owner_EmailIgnoreCase(
-            Long id,
-            String email
-    );
+        Long id,
+        String email);
 }

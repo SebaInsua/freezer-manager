@@ -33,7 +33,6 @@ import com.freezermanager.domain.storage.Storage;
 import com.freezermanager.domain.storage.StorageBatch;
 import com.freezermanager.domain.storage.StorageEntry;
 import com.freezermanager.domain.storage.StorageEntryDetail;
-import com.freezermanager.domain.storage.StorageItem;
 import com.freezermanager.dto.StorageEntryDetailRequest;
 import com.freezermanager.dto.StorageEntryRequest;
 import com.freezermanager.exception.NotFoundException;
@@ -81,9 +80,7 @@ class StorageEntryServiceTest {
                 new UsernamePasswordAuthenticationToken(
                         AUTHENTICATED_EMAIL,
                         null,
-                        List.of()
-                )
-        );
+                        List.of()));
     }
 
     @AfterEach
@@ -96,8 +93,7 @@ class StorageEntryServiceTest {
         storage.setId(id);
 
         when(storageRepository.findByIdAndOwner_EmailIgnoreCase(
-                id, AUTHENTICATED_EMAIL
-        )).thenReturn(Optional.of(storage));
+                id, AUTHENTICATED_EMAIL)).thenReturn(Optional.of(storage));
 
         when(storageRepository.findByIdForUpdate(id))
                 .thenReturn(Optional.of(storage));
@@ -112,22 +108,18 @@ class StorageEntryServiceTest {
 
         Pageable pageable = PageRequest.of(0, 10);
         Page<StorageEntry> expectedPage = new PageImpl<>(
-                List.of(entry), pageable, 1
-        );
+                List.of(entry), pageable, 1);
 
         when(storageEntryRepository.findAllByStorage_Owner_EmailIgnoreCase(
-                AUTHENTICATED_EMAIL, pageable
-        )).thenReturn(expectedPage);
+                AUTHENTICATED_EMAIL, pageable)).thenReturn(expectedPage);
 
-        Page<StorageEntry> result =
-                storageEntryService.getAllStorageEntries(pageable);
+        Page<StorageEntry> result = storageEntryService.getAllStorageEntries(pageable);
 
         assertEquals(expectedPage, result);
 
         verify(storageEntryRepository)
                 .findAllByStorage_Owner_EmailIgnoreCase(
-                        AUTHENTICATED_EMAIL, pageable
-                );
+                        AUTHENTICATED_EMAIL, pageable);
     }
 
     @Test
@@ -137,8 +129,8 @@ class StorageEntryServiceTest {
 
         when(storageEntryRepository
                 .findByStorageEntryIdAndStorage_Owner_EmailIgnoreCase(
-                        1L, AUTHENTICATED_EMAIL
-                )).thenReturn(Optional.of(expectedEntry));
+                        1L, AUTHENTICATED_EMAIL))
+                .thenReturn(Optional.of(expectedEntry));
 
         StorageEntry result = storageEntryService.getStorageEntryById(1L);
 
@@ -146,26 +138,23 @@ class StorageEntryServiceTest {
 
         verify(storageEntryRepository)
                 .findByStorageEntryIdAndStorage_Owner_EmailIgnoreCase(
-                        1L, AUTHENTICATED_EMAIL
-                );
+                        1L, AUTHENTICATED_EMAIL);
     }
 
     @Test
     void shouldThrowNotFoundExceptionWhenEntryDoesNotExist() {
         when(storageEntryRepository
                 .findByStorageEntryIdAndStorage_Owner_EmailIgnoreCase(
-                        99L, AUTHENTICATED_EMAIL
-                )).thenReturn(Optional.empty());
+                        99L, AUTHENTICATED_EMAIL))
+                .thenReturn(Optional.empty());
 
         assertThrows(
                 NotFoundException.class,
-                () -> storageEntryService.getStorageEntryById(99L)
-        );
+                () -> storageEntryService.getStorageEntryById(99L));
 
         verify(storageEntryRepository)
                 .findByStorageEntryIdAndStorage_Owner_EmailIgnoreCase(
-                        99L, AUTHENTICATED_EMAIL
-                );
+                        99L, AUTHENTICATED_EMAIL);
     }
 
     @Test
@@ -178,35 +167,30 @@ class StorageEntryServiceTest {
         BigDecimal quantity = new BigDecimal("2.00");
         BigDecimal normalizedQuantity = new BigDecimal("2000.00");
 
-        StorageEntryDetailRequest detailRequest =
-                new StorageEntryDetailRequest(
-                        5L, UnitOfMeasure.KG, quantity, null
-                );
+        StorageEntryDetailRequest detailRequest = new StorageEntryDetailRequest(
+                5L, UnitOfMeasure.KG, quantity, null);
 
         StorageEntryRequest request = new StorageEntryRequest(
-                LocalDateTime.now(), 1L, List.of(detailRequest)
-        );
+                LocalDateTime.now(), 1L, List.of(detailRequest));
 
         StorageEntryDetail detail = new StorageEntryDetail();
 
         when(foodService.getActiveFoodById(5L)).thenReturn(food);
         when(unitConversionService.toInventoryUnit(
-                quantity, UnitOfMeasure.KG
-        )).thenReturn(normalizedQuantity);
+                quantity, UnitOfMeasure.KG)).thenReturn(normalizedQuantity);
 
         when(storageItemRepository.findByStorageIdAndFoodId(1L, 5L))
                 .thenReturn(Optional.empty());
 
         when(storageEntryDetailService.buildEntryDetail(
-                eq(food), eq(detailRequest), any(StorageEntry.class)
-        )).thenAnswer(invocation -> {
-            StorageEntry entry = invocation.getArgument(2);
-            detail.setStorageEntry(entry);
-            detail.setFood(food);
-            detail.setCantidad(quantity);
-            detail.setSelectedUnit(UnitOfMeasure.KG);
-            return detail;
-        });
+                eq(food), eq(detailRequest), any(StorageEntry.class))).thenAnswer(invocation -> {
+                    StorageEntry entry = invocation.getArgument(2);
+                    detail.setStorageEntry(entry);
+                    detail.setFood(food);
+                    detail.setCantidad(quantity);
+                    detail.setSelectedUnit(UnitOfMeasure.KG);
+                    return detail;
+                });
 
         when(storageEntryRepository.save(any(StorageEntry.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -225,11 +209,9 @@ class StorageEntryServiceTest {
             StorageBatch batch = savedBatches.get(0);
             assertSame(detail, batch.getStorageEntryDetail());
             assertEquals(
-                    0, normalizedQuantity.compareTo(batch.getInitialQuantity())
-            );
+                    0, normalizedQuantity.compareTo(batch.getInitialQuantity()));
             assertEquals(
-                    0, normalizedQuantity.compareTo(batch.getAvailableQuantity())
-            );
+                    0, normalizedQuantity.compareTo(batch.getAvailableQuantity()));
 
             return true;
         }));
@@ -250,20 +232,15 @@ class StorageEntryServiceTest {
         BigDecimal normalizedQuantity1 = new BigDecimal("2000.00");
         BigDecimal normalizedQuantity2 = new BigDecimal("500.00");
 
-        StorageEntryDetailRequest requestDetail1 =
-                new StorageEntryDetailRequest(
-                        5L, UnitOfMeasure.KG, quantity1, null
-                );
+        StorageEntryDetailRequest requestDetail1 = new StorageEntryDetailRequest(
+                5L, UnitOfMeasure.KG, quantity1, null);
 
-        StorageEntryDetailRequest requestDetail2 =
-                new StorageEntryDetailRequest(
-                        6L, UnitOfMeasure.G, quantity2, null
-                );
+        StorageEntryDetailRequest requestDetail2 = new StorageEntryDetailRequest(
+                6L, UnitOfMeasure.G, quantity2, null);
 
         StorageEntryRequest request = new StorageEntryRequest(
                 LocalDateTime.now(), 1L,
-                List.of(requestDetail1, requestDetail2)
-        );
+                List.of(requestDetail1, requestDetail2));
 
         StorageEntryDetail detail1 = new StorageEntryDetail();
         StorageEntryDetail detail2 = new StorageEntryDetail();
@@ -272,12 +249,10 @@ class StorageEntryServiceTest {
         when(foodService.getActiveFoodById(6L)).thenReturn(food2);
 
         when(unitConversionService.toInventoryUnit(
-                quantity1, UnitOfMeasure.KG
-        )).thenReturn(normalizedQuantity1);
+                quantity1, UnitOfMeasure.KG)).thenReturn(normalizedQuantity1);
 
         when(unitConversionService.toInventoryUnit(
-                quantity2, UnitOfMeasure.G
-        )).thenReturn(normalizedQuantity2);
+                quantity2, UnitOfMeasure.G)).thenReturn(normalizedQuantity2);
 
         when(storageItemRepository.findByStorageIdAndFoodId(1L, 5L))
                 .thenReturn(Optional.empty());
@@ -286,26 +261,24 @@ class StorageEntryServiceTest {
                 .thenReturn(Optional.empty());
 
         when(storageEntryDetailService.buildEntryDetail(
-                eq(food1), eq(requestDetail1), any(StorageEntry.class)
-        )).thenAnswer(invocation -> {
-            StorageEntry entry = invocation.getArgument(2);
-            detail1.setStorageEntry(entry);
-            detail1.setFood(food1);
-            detail1.setCantidad(quantity1);
-            detail1.setSelectedUnit(UnitOfMeasure.KG);
-            return detail1;
-        });
+                eq(food1), eq(requestDetail1), any(StorageEntry.class))).thenAnswer(invocation -> {
+                    StorageEntry entry = invocation.getArgument(2);
+                    detail1.setStorageEntry(entry);
+                    detail1.setFood(food1);
+                    detail1.setCantidad(quantity1);
+                    detail1.setSelectedUnit(UnitOfMeasure.KG);
+                    return detail1;
+                });
 
         when(storageEntryDetailService.buildEntryDetail(
-                eq(food2), eq(requestDetail2), any(StorageEntry.class)
-        )).thenAnswer(invocation -> {
-            StorageEntry entry = invocation.getArgument(2);
-            detail2.setStorageEntry(entry);
-            detail2.setFood(food2);
-            detail2.setCantidad(quantity2);
-            detail2.setSelectedUnit(UnitOfMeasure.G);
-            return detail2;
-        });
+                eq(food2), eq(requestDetail2), any(StorageEntry.class))).thenAnswer(invocation -> {
+                    StorageEntry entry = invocation.getArgument(2);
+                    detail2.setStorageEntry(entry);
+                    detail2.setFood(food2);
+                    detail2.setCantidad(quantity2);
+                    detail2.setSelectedUnit(UnitOfMeasure.G);
+                    return detail2;
+                });
 
         when(storageEntryRepository.save(any(StorageEntry.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -332,17 +305,13 @@ class StorageEntryServiceTest {
                     .orElseThrow();
 
             assertEquals(
-                    0, normalizedQuantity1.compareTo(batch1.getInitialQuantity())
-            );
+                    0, normalizedQuantity1.compareTo(batch1.getInitialQuantity()));
             assertEquals(
-                    0, normalizedQuantity1.compareTo(batch1.getAvailableQuantity())
-            );
+                    0, normalizedQuantity1.compareTo(batch1.getAvailableQuantity()));
             assertEquals(
-                    0, normalizedQuantity2.compareTo(batch2.getInitialQuantity())
-            );
+                    0, normalizedQuantity2.compareTo(batch2.getInitialQuantity()));
             assertEquals(
-                    0, normalizedQuantity2.compareTo(batch2.getAvailableQuantity())
-            );
+                    0, normalizedQuantity2.compareTo(batch2.getAvailableQuantity()));
 
             return true;
         }));
@@ -361,34 +330,29 @@ class StorageEntryServiceTest {
         BigDecimal quantity = new BigDecimal("2.00");
         BigDecimal normalizedQuantity = new BigDecimal("2000.00");
 
-        StorageEntryDetailRequest detailRequest =
-                new StorageEntryDetailRequest(
-                        5L, UnitOfMeasure.KG, quantity, actualExpirationDate
-                );
+        StorageEntryDetailRequest detailRequest = new StorageEntryDetailRequest(
+                5L, UnitOfMeasure.KG, quantity, actualExpirationDate);
 
         StorageEntryRequest request = new StorageEntryRequest(
-                movementDate.atTime(12, 0), 1L, List.of(detailRequest)
-        );
+                movementDate.atTime(12, 0), 1L, List.of(detailRequest));
 
         StorageEntryDetail detail = new StorageEntryDetail();
 
         when(foodService.getActiveFoodById(5L)).thenReturn(food);
         when(unitConversionService.toInventoryUnit(
-                quantity, UnitOfMeasure.KG
-        )).thenReturn(normalizedQuantity);
+                quantity, UnitOfMeasure.KG)).thenReturn(normalizedQuantity);
         when(storageItemRepository.findByStorageIdAndFoodId(1L, 5L))
                 .thenReturn(Optional.empty());
 
         when(storageEntryDetailService.buildEntryDetail(
-                eq(food), eq(detailRequest), any(StorageEntry.class)
-        )).thenAnswer(invocation -> {
-            StorageEntry entry = invocation.getArgument(2);
-            detail.setStorageEntry(entry);
-            detail.setFood(food);
-            detail.setCantidad(quantity);
-            detail.setSelectedUnit(UnitOfMeasure.KG);
-            return detail;
-        });
+                eq(food), eq(detailRequest), any(StorageEntry.class))).thenAnswer(invocation -> {
+                    StorageEntry entry = invocation.getArgument(2);
+                    detail.setStorageEntry(entry);
+                    detail.setFood(food);
+                    detail.setCantidad(quantity);
+                    detail.setSelectedUnit(UnitOfMeasure.KG);
+                    return detail;
+                });
 
         when(storageEntryRepository.save(any(StorageEntry.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -400,8 +364,7 @@ class StorageEntryServiceTest {
 
             assertEquals(actualExpirationDate, batch.getExpirationDate());
             assertEquals(
-                    ExpirationDateType.ACTUAL, batch.getExpirationDateType()
-            );
+                    ExpirationDateType.ACTUAL, batch.getExpirationDateType());
 
             return true;
         }));
@@ -420,34 +383,29 @@ class StorageEntryServiceTest {
         BigDecimal quantity = new BigDecimal("2.00");
         BigDecimal normalizedQuantity = new BigDecimal("2000.00");
 
-        StorageEntryDetailRequest detailRequest =
-                new StorageEntryDetailRequest(
-                        5L, UnitOfMeasure.KG, quantity, null
-                );
+        StorageEntryDetailRequest detailRequest = new StorageEntryDetailRequest(
+                5L, UnitOfMeasure.KG, quantity, null);
 
         StorageEntryRequest request = new StorageEntryRequest(
-                movementDate.atTime(12, 0), 1L, List.of(detailRequest)
-        );
+                movementDate.atTime(12, 0), 1L, List.of(detailRequest));
 
         StorageEntryDetail detail = new StorageEntryDetail();
 
         when(foodService.getActiveFoodById(5L)).thenReturn(food);
         when(unitConversionService.toInventoryUnit(
-                quantity, UnitOfMeasure.KG
-        )).thenReturn(normalizedQuantity);
+                quantity, UnitOfMeasure.KG)).thenReturn(normalizedQuantity);
         when(storageItemRepository.findByStorageIdAndFoodId(1L, 5L))
                 .thenReturn(Optional.empty());
 
         when(storageEntryDetailService.buildEntryDetail(
-                eq(food), eq(detailRequest), any(StorageEntry.class)
-        )).thenAnswer(invocation -> {
-            StorageEntry entry = invocation.getArgument(2);
-            detail.setStorageEntry(entry);
-            detail.setFood(food);
-            detail.setCantidad(quantity);
-            detail.setSelectedUnit(UnitOfMeasure.KG);
-            return detail;
-        });
+                eq(food), eq(detailRequest), any(StorageEntry.class))).thenAnswer(invocation -> {
+                    StorageEntry entry = invocation.getArgument(2);
+                    detail.setStorageEntry(entry);
+                    detail.setFood(food);
+                    detail.setCantidad(quantity);
+                    detail.setSelectedUnit(UnitOfMeasure.KG);
+                    return detail;
+                });
 
         when(storageEntryRepository.save(any(StorageEntry.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -459,8 +417,7 @@ class StorageEntryServiceTest {
 
             assertEquals(expectedExpirationDate, batch.getExpirationDate());
             assertEquals(
-                    ExpirationDateType.ESTIMATED, batch.getExpirationDateType()
-            );
+                    ExpirationDateType.ESTIMATED, batch.getExpirationDateType());
 
             return true;
         }));
@@ -477,35 +434,30 @@ class StorageEntryServiceTest {
         BigDecimal quantity = new BigDecimal("2.00");
         BigDecimal normalizedQuantity = new BigDecimal("2000.00");
 
-        StorageEntryDetailRequest detailRequest =
-                new StorageEntryDetailRequest(
-                        5L, UnitOfMeasure.KG, quantity, null
-                );
+        StorageEntryDetailRequest detailRequest = new StorageEntryDetailRequest(
+                5L, UnitOfMeasure.KG, quantity, null);
 
         StorageEntryRequest request = new StorageEntryRequest(
                 LocalDateTime.of(2026, 10, 19, 12, 0),
-                1L, List.of(detailRequest)
-        );
+                1L, List.of(detailRequest));
 
         StorageEntryDetail detail = new StorageEntryDetail();
 
         when(foodService.getActiveFoodById(5L)).thenReturn(food);
         when(unitConversionService.toInventoryUnit(
-                quantity, UnitOfMeasure.KG
-        )).thenReturn(normalizedQuantity);
+                quantity, UnitOfMeasure.KG)).thenReturn(normalizedQuantity);
         when(storageItemRepository.findByStorageIdAndFoodId(1L, 5L))
                 .thenReturn(Optional.empty());
 
         when(storageEntryDetailService.buildEntryDetail(
-                eq(food), eq(detailRequest), any(StorageEntry.class)
-        )).thenAnswer(invocation -> {
-            StorageEntry entry = invocation.getArgument(2);
-            detail.setStorageEntry(entry);
-            detail.setFood(food);
-            detail.setCantidad(quantity);
-            detail.setSelectedUnit(UnitOfMeasure.KG);
-            return detail;
-        });
+                eq(food), eq(detailRequest), any(StorageEntry.class))).thenAnswer(invocation -> {
+                    StorageEntry entry = invocation.getArgument(2);
+                    detail.setStorageEntry(entry);
+                    detail.setFood(food);
+                    detail.setCantidad(quantity);
+                    detail.setSelectedUnit(UnitOfMeasure.KG);
+                    return detail;
+                });
 
         when(storageEntryRepository.save(any(StorageEntry.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -517,8 +469,7 @@ class StorageEntryServiceTest {
 
             assertNull(batch.getExpirationDate());
             assertEquals(
-                    ExpirationDateType.UNDEFINED, batch.getExpirationDateType()
-            );
+                    ExpirationDateType.UNDEFINED, batch.getExpirationDateType());
 
             return true;
         }));

@@ -16,24 +16,24 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface StorageItemRepository extends JpaRepository<StorageItem,Long>{
     @Query("""
-    SELECT si FROM StorageItem si
-    WHERE si.storage.id = :storageId
-    AND si.food.foodId = :foodId
-    """)
-    Optional<StorageItem> findByStorageIdAndFoodId(
-        @Param("storageId") Long storageId,
-        @Param("foodId") Long foodId
+        SELECT si FROM StorageItem si
+        WHERE si.storage.id = :storageId
+        AND si.food.foodId = :foodId
+        """)
+        Optional<StorageItem> findByStorageIdAndFoodId(
+            @Param("storageId") Long storageId,
+            @Param("foodId") Long foodId
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-    SELECT si FROM StorageItem si
-    WHERE si.storage.id = :storageId
-    AND si.food.foodId = :foodId
-    """)
-    Optional<StorageItem> findByStorageIdAndFoodIdForUpdate(
-        @Param("storageId") Long storageId,
-        @Param("foodId") Long foodId
+        SELECT si FROM StorageItem si
+        WHERE si.storage.id = :storageId
+        AND si.food.foodId = :foodId
+        """)
+        Optional<StorageItem> findByStorageIdAndFoodIdForUpdate(
+            @Param("storageId") Long storageId,
+            @Param("foodId") Long foodId
     );
     Page<StorageItem> findAllByStorage_Owner_EmailIgnoreCase(
             String email,

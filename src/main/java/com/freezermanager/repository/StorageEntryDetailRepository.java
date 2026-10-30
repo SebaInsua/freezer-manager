@@ -16,36 +16,42 @@ public interface StorageEntryDetailRepository
         extends JpaRepository<StorageEntryDetail, Long> {
 
     @Query("""
-        SELECT s FROM StorageEntryDetail s
-        JOIN FETCH s.storageEntry d
-        WHERE d.storageEntryId = :id
-        """)
+            SELECT s FROM StorageEntryDetail s
+            JOIN FETCH s.storageEntry d
+            WHERE d.storageEntryId = :id
+            """)
     List<StorageEntryDetail> findDetailsByStorageEntryId(
-            @Param("id") Long id
-    );
+            @Param("id") Long id);
 
     @Query("""
-        SELECT s FROM StorageEntryDetail s
-        JOIN FETCH s.storageEntry d
-        JOIN d.storage st
-        JOIN st.owner u
-        WHERE d.storageEntryId = :id
-        AND LOWER(u.email) = LOWER(:email)
-        """)
+            SELECT s FROM StorageEntryDetail s
+            JOIN FETCH s.storageEntry d
+            JOIN d.storage st
+            JOIN st.owner u
+            WHERE d.storageEntryId = :id
+            AND LOWER(u.email) = LOWER(:email)
+            """)
     List<StorageEntryDetail> findDetailsByEntryIdAndOwnerEmail(
             @Param("id") Long id,
-            @Param("email") String email
-    );
+            @Param("email") String email);
 
-    Page<StorageEntryDetail>
-        findAllByStorageEntry_Storage_Owner_EmailIgnoreCase(
-                String email,
-                Pageable pageable
-        );
+    Page<StorageEntryDetail> findAllByStorageEntry_Storage_Owner_EmailIgnoreCase(
+            String email,
+            Pageable pageable);
 
-    Optional<StorageEntryDetail>
-            findByEntryDetailIdAndStorageEntry_Storage_Owner_EmailIgnoreCase(
-                    Long id,
-                    String email
-            );
+    Optional<StorageEntryDetail> findByEntryDetailIdAndStorageEntry_Storage_Owner_EmailIgnoreCase(
+            Long id,
+            String email);
+
+    @Query("""
+            SELECT d FROM StorageEntryDetail d
+            JOIN FETCH d.food
+            JOIN FETCH d.storageEntry e
+            JOIN FETCH e.storage
+            WHERE e.storageEntryId IN :ids
+            AND LOWER(e.storage.owner.email) = LOWER(:email)
+            """)
+    List<StorageEntryDetail> findAllByEntryIdsAndOwnerEmail(
+            @Param("ids") List<Long> ids,
+            @Param("email") String email);
 }

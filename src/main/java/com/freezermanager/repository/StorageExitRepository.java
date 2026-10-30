@@ -17,16 +17,13 @@ public interface StorageExitRepository
 
     Page<StorageExit> findAllByStorage_Owner_EmailIgnoreCase(
             String email,
-            Pageable pageable
-    );
+            Pageable pageable);
 
     Optional<StorageExit> findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
             Long id,
-            String email
-    );
+            String email);
 
     boolean existsByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
             Long id,
-            String email
-    );
+            String email);
 }

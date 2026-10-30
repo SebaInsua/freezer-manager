@@ -21,8 +21,6 @@ import com.freezermanager.repository.StorageRepository;
 import com.freezermanager.repository.UserRepository;
 import com.freezermanager.service.JwtService;
 
-import tools.jackson.databind.ObjectMapper;
-
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -40,8 +38,6 @@ public class StorageControllerIntegrationTest {
     @Autowired
     private JwtService jwtService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     @Test
     void testIntegrationWhenStoragesItsEmpty() throws Exception {
         String email = "empty@example.com";
@@ -49,7 +45,7 @@ public class StorageControllerIntegrationTest {
         String token = createToken(email);
 
         mockMvc.perform(get("/api/v1/storages")
-                        .header("Authorization", "Bearer " + token))
+                .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(0)))
                 .andExpect(jsonPath("$.empty").value(true))
@@ -68,7 +64,7 @@ public class StorageControllerIntegrationTest {
         String token = createToken(email);
 
         mockMvc.perform(get("/api/v1/storages")
-                        .header("Authorization", "Bearer " + token))
+                .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].capacidadLitros",
@@ -89,7 +85,7 @@ public class StorageControllerIntegrationTest {
         String token = createToken(email);
 
         mockMvc.perform(get("/api/v1/storages/{id}", storage.getId())
-                        .header("Authorization", "Bearer " + token))
+                .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(storage.getId()))
                 .andExpect(jsonPath("$.marca").value("Philco"));
@@ -110,11 +106,10 @@ public class StorageControllerIntegrationTest {
         }
 
         String token = createToken(email);
-        String messageExpected =
-                "No existe un Freezer con el ID: " + idInexistente;
+        String messageExpected = "No existe un Freezer con el ID: " + idInexistente;
 
         mockMvc.perform(get("/api/v1/storages/{id}", idInexistente)
-                        .header("Authorization", "Bearer " + token))
+                .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value(messageExpected))
                 .andExpect(jsonPath("$.status").value(404));
@@ -132,9 +127,9 @@ public class StorageControllerIntegrationTest {
         String token = createToken(email);
 
         mockMvc.perform(get("/api/v1/storages")
-                        .header("Authorization", "Bearer " + token)
-                        .param("page", "0")
-                        .param("size", "2"))
+                .header("Authorization", "Bearer " + token)
+                .param("page", "0")
+                .param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].marca").value("Marca1"))
@@ -157,9 +152,9 @@ public class StorageControllerIntegrationTest {
         String token = createToken(email);
 
         mockMvc.perform(get("/api/v1/storages")
-                        .header("Authorization", "Bearer " + token)
-                        .param("page", "1")
-                        .param("size", "2"))
+                .header("Authorization", "Bearer " + token)
+                .param("page", "1")
+                .param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].marca").value("Marca3"))
@@ -182,8 +177,8 @@ public class StorageControllerIntegrationTest {
         String token = createToken(email);
 
         mockMvc.perform(get("/api/v1/storages")
-                        .header("Authorization", "Bearer " + token)
-                        .param("sort", "marca,desc"))
+                .header("Authorization", "Bearer " + token)
+                .param("sort", "marca,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(3)))
                 .andExpect(jsonPath("$.content[0].marca").value("Samsung"))
@@ -207,9 +202,9 @@ public class StorageControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/v1/storages")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                        .content(request))
+                .header("Authorization", "Bearer " + token)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(request))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.marca").value("Philco"))
@@ -228,8 +223,8 @@ public class StorageControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/v1/storages")
-                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                        .content(request))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(request))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -247,7 +242,7 @@ public class StorageControllerIntegrationTest {
         String otherToken = createToken(otherEmail);
 
         mockMvc.perform(get("/api/v1/storages/{id}", storage.getId())
-                        .header("Authorization", "Bearer " + otherToken))
+                .header("Authorization", "Bearer " + otherToken))
                 .andExpect(status().isNotFound());
     }
 

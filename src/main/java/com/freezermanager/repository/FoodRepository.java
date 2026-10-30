@@ -14,39 +14,36 @@ import com.freezermanager.domain.food.Food;
 public interface FoodRepository extends JpaRepository<Food, Long> {
 
     @Query("""
-        SELECT f
-        FROM Food f
-        WHERE f.active = :active
-          AND (f.owner IS NULL OR f.owner.id = :ownerId)
-        """)
+            SELECT f
+            FROM Food f
+            WHERE f.active = :active
+              AND (f.owner IS NULL OR f.owner.id = :ownerId)
+            """)
     Page<Food> findVisibleFoods(
             @Param("active") boolean active,
             @Param("ownerId") Long ownerId,
-            Pageable pageable
-    );
+            Pageable pageable);
 
     @Query("""
-        SELECT f
-        FROM Food f
-        WHERE f.foodId = :foodId
-          AND (f.owner IS NULL OR f.owner.id = :ownerId)
-        """)
+            SELECT f
+            FROM Food f
+            WHERE f.foodId = :foodId
+              AND (f.owner IS NULL OR f.owner.id = :ownerId)
+            """)
     Optional<Food> findVisibleById(
             @Param("foodId") Long foodId,
-            @Param("ownerId") Long ownerId
-    );
+            @Param("ownerId") Long ownerId);
 
     @Query("""
-        SELECT f
-        FROM Food f
-        WHERE f.foodId = :foodId
-          AND f.active = true
-          AND (f.owner IS NULL OR f.owner.id = :ownerId)
-        """)
+            SELECT f
+            FROM Food f
+            WHERE f.foodId = :foodId
+              AND f.active = true
+              AND (f.owner IS NULL OR f.owner.id = :ownerId)
+            """)
     Optional<Food> findActiveVisibleById(
             @Param("foodId") Long foodId,
-            @Param("ownerId") Long ownerId
-    );
+            @Param("ownerId") Long ownerId);
 
     boolean existsByNameIgnoreCaseAndOwnerIsNull(String name);
 

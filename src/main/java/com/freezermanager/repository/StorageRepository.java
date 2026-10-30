@@ -1,6 +1,7 @@
 
 package com.freezermanager.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -18,17 +19,18 @@ public interface StorageRepository extends JpaRepository<Storage, Long> {
 
     Page<Storage> findAllByOwner_EmailIgnoreCase(
             String email,
-            Pageable pageable
-    );
+            Pageable pageable);
 
     Optional<Storage> findByIdAndOwner_EmailIgnoreCase(
             Long id,
-            String email
-    );
+            String email);
+
+    List<Storage> findAllByIdInAndOwner_EmailIgnoreCase(
+            List<Long> ids,
+            String email);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Storage s WHERE s.id = :storageId")
     Optional<Storage> findByIdForUpdate(
-            @Param("storageId") Long storageId
-    );
+            @Param("storageId") Long storageId);
 }
