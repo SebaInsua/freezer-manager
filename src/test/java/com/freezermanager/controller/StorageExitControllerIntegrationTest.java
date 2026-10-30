@@ -94,11 +94,9 @@ public class StorageExitControllerIntegrationTest {
         authorizationHeader = "Bearer " + jwtService.generateToken(testUser.getEmail());
     }
 
-    private final Map<Long, List<Long>> createdBatchIdsByStorage =
-            new HashMap<>();
+    private final Map<Long, List<Long>> createdBatchIdsByStorage = new HashMap<>();
 
-    private final Map<Long, List<Long>> createdEntryIdsByStorage =
-            new HashMap<>();
+    private final Map<Long, List<Long>> createdEntryIdsByStorage = new HashMap<>();
 
     private StorageBatch createBatch(
             Storage storage,
@@ -110,10 +108,9 @@ public class StorageExitControllerIntegrationTest {
         entry.setMovementDateTime(LocalDateTime.now());
         entry.setRecordedAt(LocalDateTime.now());
 
-        UnitOfMeasure selectedUnit =
-                food.getUnitOfMeasures().contains(UnitOfMeasure.G)
-                        ? UnitOfMeasure.G
-                        : food.getUnitOfMeasures().iterator().next();
+        UnitOfMeasure selectedUnit = food.getUnitOfMeasures().contains(UnitOfMeasure.G)
+                ? UnitOfMeasure.G
+                : food.getUnitOfMeasures().iterator().next();
 
         StorageEntryDetail entryDetail = new StorageEntryDetail();
         entryDetail.setFood(food);
@@ -123,8 +120,7 @@ public class StorageExitControllerIntegrationTest {
 
         entry.setDetails(new ArrayList<>(List.of(entryDetail)));
 
-        StorageEntry savedEntry =
-                storageEntryRepository.saveAndFlush(entry);
+        StorageEntry savedEntry = storageEntryRepository.saveAndFlush(entry);
 
         StorageEntryDetail savedDetail = savedEntry.getDetails().get(0);
 
@@ -134,8 +130,7 @@ public class StorageExitControllerIntegrationTest {
         batch.setAvailableQuantity(quantity);
         batch.setActive(true);
 
-        StorageBatch savedBatch =
-                storageBatchRepository.saveAndFlush(batch);
+        StorageBatch savedBatch = storageBatchRepository.saveAndFlush(batch);
 
         createdEntryIdsByStorage
                 .computeIfAbsent(
@@ -153,15 +148,13 @@ public class StorageExitControllerIntegrationTest {
     }
 
     private void cleanupBatchesAndEntries(Long storageId) {
-        List<Long> batchIds =
-                createdBatchIdsByStorage.remove(storageId);
+        List<Long> batchIds = createdBatchIdsByStorage.remove(storageId);
 
         if (batchIds != null) {
             batchIds.forEach(storageBatchRepository::deleteById);
         }
 
-        List<Long> entryIds =
-                createdEntryIdsByStorage.remove(storageId);
+        List<Long> entryIds = createdEntryIdsByStorage.remove(storageId);
 
         if (entryIds != null) {
             entryIds.forEach(storageEntryRepository::deleteById);
@@ -237,8 +230,8 @@ public class StorageExitControllerIntegrationTest {
         StorageExit exitGuardado = storageExitRepository.save(exit);
 
         mockMvc.perform(get(
-                        "/api/v1/storagesexit/{id}",
-                        exitGuardado.getStorageExitId()).header("Authorization", authorizationHeader))
+                "/api/v1/storagesexit/{id}",
+                exitGuardado.getStorageExitId()).header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.storageExitId")
                         .value(exitGuardado.getStorageExitId()))
@@ -270,13 +263,12 @@ public class StorageExitControllerIntegrationTest {
             idInexistente += 1;
         }
 
-        String messageExpected =
-                "No existe un registro de egreso con el ID: "
-                        + idInexistente;
+        String messageExpected = "No existe un registro de egreso con el ID: "
+                + idInexistente;
 
         mockMvc.perform(get(
-                        "/api/v1/storagesexit/{id}",
-                        idInexistente).header("Authorization", authorizationHeader))
+                "/api/v1/storagesexit/{id}",
+                idInexistente).header("Authorization", authorizationHeader))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value(messageExpected))
                 .andExpect(jsonPath("$.status").value(404));
@@ -319,8 +311,8 @@ public class StorageExitControllerIntegrationTest {
         storageExitDetailRepository.save(detail);
 
         mockMvc.perform(get(
-                        "/api/v1/storagesexit/{id}/details",
-                        exitGuardado.getStorageExitId()).header("Authorization", authorizationHeader))
+                "/api/v1/storagesexit/{id}/details",
+                exitGuardado.getStorageExitId()).header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath(
@@ -359,19 +351,19 @@ public class StorageExitControllerIntegrationTest {
                 BigDecimal.valueOf(5));
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-22T10:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "UNIT",
-                        "cantidad": 2
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-22T10:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "UNIT",
+                            "cantidad": 2
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -379,31 +371,31 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.storageExitId").exists())
-            .andExpect(jsonPath("$.details", hasSize(1)))
-            .andExpect(jsonPath(
-                    "$.details[0].cantidad",
-                    comparesEqualTo(2)));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.storageExitId").exists())
+                .andExpect(jsonPath("$.details", hasSize(1)))
+                .andExpect(jsonPath(
+                        "$.details[0].cantidad",
+                        comparesEqualTo(2)));
 
         StorageItem updatedItem = storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .orElseThrow();
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.valueOf(3).compareTo(updatedItem.getCantidad()));
+                0,
+                BigDecimal.valueOf(3).compareTo(updatedItem.getCantidad()));
 
         StorageBatch updatedBatch = storageBatchRepository
-            .findById(batch.getId())
-            .orElseThrow();
+                .findById(batch.getId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.valueOf(3)
-                .compareTo(updatedBatch.getAvailableQuantity()));
+                0,
+                BigDecimal.valueOf(3)
+                        .compareTo(updatedBatch.getAvailableQuantity()));
     }
 
     @Test
@@ -435,19 +427,19 @@ public class StorageExitControllerIntegrationTest {
                 BigDecimal.valueOf(5));
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-22T10:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "UNIT",
-                        "cantidad": 6
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-22T10:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "UNIT",
+                            "cantidad": 6
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -455,31 +447,31 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
 
         StorageItem unchangedItem = storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .orElseThrow();
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.valueOf(5).compareTo(unchangedItem.getCantidad()));
+                0,
+                BigDecimal.valueOf(5).compareTo(unchangedItem.getCantidad()));
 
         StorageBatch unchangedBatch = storageBatchRepository
-            .findById(batch.getId())
-            .orElseThrow();
+                .findById(batch.getId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.valueOf(5)
-                .compareTo(unchangedBatch.getAvailableQuantity()));
+                0,
+                BigDecimal.valueOf(5)
+                        .compareTo(unchangedBatch.getAvailableQuantity()));
 
         assertEquals(0, storageExitRepository.count());
     }
 
-        @Test
+    @Test
     public void testIntegrationExitInGramsAndNormalizeInventory()
             throws Exception {
 
@@ -508,19 +500,19 @@ public class StorageExitControllerIntegrationTest {
         storageItemRepository.save(item);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-22T10:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "G",
-                        "cantidad": 500
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-22T10:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "G",
+                            "cantidad": 500
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -528,22 +520,22 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath(
-                    "$.details[0].cantidad",
-                    comparesEqualTo(500)))
-            .andExpect(jsonPath(
-                    "$.details[0].selectedUnit").value("G"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath(
+                        "$.details[0].cantidad",
+                        comparesEqualTo(500)))
+                .andExpect(jsonPath(
+                        "$.details[0].selectedUnit").value("G"));
 
         StorageItem updatedItem = storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .orElseThrow();
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.valueOf(1500).compareTo(updatedItem.getCantidad()));
+                0,
+                BigDecimal.valueOf(1500).compareTo(updatedItem.getCantidad()));
     }
 
     @Test
@@ -575,19 +567,19 @@ public class StorageExitControllerIntegrationTest {
         storageItemRepository.save(item);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-22T10:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "KG",
-                        "cantidad": 0.5
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-22T10:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 0.5
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -595,22 +587,22 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath(
-                    "$.details[0].cantidad",
-                    comparesEqualTo(0.5)))
-            .andExpect(jsonPath(
-                    "$.details[0].selectedUnit").value("KG"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath(
+                        "$.details[0].cantidad",
+                        comparesEqualTo(0.5)))
+                .andExpect(jsonPath(
+                        "$.details[0].selectedUnit").value("KG"));
 
         StorageItem updatedItem = storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .orElseThrow();
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.valueOf(1500).compareTo(updatedItem.getCantidad()));
+                0,
+                BigDecimal.valueOf(1500).compareTo(updatedItem.getCantidad()));
     }
 
     @Test
@@ -642,19 +634,19 @@ public class StorageExitControllerIntegrationTest {
         storageItemRepository.save(item);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-22T10:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "G",
-                        "cantidad": 500
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-22T10:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "G",
+                            "cantidad": 500
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -662,27 +654,27 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath(
-                    "$.details[0].cantidad",
-                    comparesEqualTo(500)))
-            .andExpect(jsonPath(
-                    "$.details[0].selectedUnit").value("G"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath(
+                        "$.details[0].cantidad",
+                        comparesEqualTo(500)))
+                .andExpect(jsonPath(
+                        "$.details[0].selectedUnit").value("G"));
 
         assertTrue(
-            storageItemRepository
-                .findByStorageIdAndFoodId(
-                    savedStorage.getId(),
-                    savedFood.getFoodId())
-                .isEmpty());
+                storageItemRepository
+                        .findByStorageIdAndFoodId(
+                                savedStorage.getId(),
+                                savedFood.getFoodId())
+                        .isEmpty());
 
         StorageBatch updatedBatch = storageBatchRepository
-            .findById(batch.getId())
-            .orElseThrow();
+                .findById(batch.getId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.ZERO.compareTo(updatedBatch.getAvailableQuantity()));
+                0,
+                BigDecimal.ZERO.compareTo(updatedBatch.getAvailableQuantity()));
 
         assertFalse(updatedBatch.isActive());
     }
@@ -716,19 +708,19 @@ public class StorageExitControllerIntegrationTest {
         storageItemRepository.save(item);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-22T10:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "KG",
-                        "cantidad": 1
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-22T10:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 1
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -736,26 +728,26 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
 
         StorageItem unchangedItem = storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .orElseThrow();
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.valueOf(500).compareTo(unchangedItem.getCantidad()));
+                0,
+                BigDecimal.valueOf(500).compareTo(unchangedItem.getCantidad()));
 
         StorageBatch unchangedBatch = storageBatchRepository
-            .findById(batch.getId())
-            .orElseThrow();
+                .findById(batch.getId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.valueOf(500)
-                .compareTo(unchangedBatch.getAvailableQuantity()));
+                0,
+                BigDecimal.valueOf(500)
+                        .compareTo(unchangedBatch.getAvailableQuantity()));
 
         assertEquals(0, storageExitRepository.count());
     }
@@ -820,25 +812,25 @@ public class StorageExitControllerIntegrationTest {
             fishItem = storageItemRepository.save(fishItem);
 
             String requestBody = """
-                {
-                    "movementDateTime": "2026-10-22T10:00:00",
-                    "storageId": %d,
-                    "details": [
-                        {
-                            "foodId": %d,
-                            "batchId": %d,
-                            "selectedUnit": "G",
-                            "cantidad": 500
-                        },
-                        {
-                            "foodId": %d,
-                            "batchId": %d,
-                            "selectedUnit": "G",
-                            "cantidad": 500
-                        }
-                    ]
-                }
-                """.formatted(
+                    {
+                        "movementDateTime": "2026-10-22T10:00:00",
+                        "storageId": %d,
+                        "details": [
+                            {
+                                "foodId": %d,
+                                "batchId": %d,
+                                "selectedUnit": "G",
+                                "cantidad": 500
+                            },
+                            {
+                                "foodId": %d,
+                                "batchId": %d,
+                                "selectedUnit": "G",
+                                "cantidad": 500
+                            }
+                        ]
+                    }
+                    """.formatted(
                     storageId,
                     savedChicken.getFoodId(),
                     chickenBatch.getId(),
@@ -848,72 +840,68 @@ public class StorageExitControllerIntegrationTest {
             mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
-                .andExpect(status().isBadRequest());
+                    .andExpect(status().isBadRequest());
 
             StorageItem unchangedChicken = storageItemRepository
-                .findByStorageIdAndFoodId(
-                    storageId,
-                    savedChicken.getFoodId())
-                .orElseThrow();
+                    .findByStorageIdAndFoodId(
+                            storageId,
+                            savedChicken.getFoodId())
+                    .orElseThrow();
 
             assertEquals(
-                0,
-                BigDecimal.valueOf(2000)
-                    .compareTo(unchangedChicken.getCantidad()));
+                    0,
+                    BigDecimal.valueOf(2000)
+                            .compareTo(unchangedChicken.getCantidad()));
 
             StorageItem unchangedFish = storageItemRepository
-                .findByStorageIdAndFoodId(
-                    storageId,
-                    savedFish.getFoodId())
-                .orElseThrow();
+                    .findByStorageIdAndFoodId(
+                            storageId,
+                            savedFish.getFoodId())
+                    .orElseThrow();
 
             assertEquals(
-                0,
-                BigDecimal.valueOf(300)
-                    .compareTo(unchangedFish.getCantidad()));
+                    0,
+                    BigDecimal.valueOf(300)
+                            .compareTo(unchangedFish.getCantidad()));
 
             StorageBatch unchangedChickenBatch = storageBatchRepository
-                .findById(chickenBatch.getId())
-                .orElseThrow();
+                    .findById(chickenBatch.getId())
+                    .orElseThrow();
 
             assertEquals(
-                0,
-                BigDecimal.valueOf(2000)
-                    .compareTo(unchangedChickenBatch.getAvailableQuantity()));
+                    0,
+                    BigDecimal.valueOf(2000)
+                            .compareTo(unchangedChickenBatch.getAvailableQuantity()));
 
             StorageBatch unchangedFishBatch = storageBatchRepository
-                .findById(fishBatch.getId())
-                .orElseThrow();
+                    .findById(fishBatch.getId())
+                    .orElseThrow();
 
             assertEquals(
-                0,
-                BigDecimal.valueOf(300)
-                    .compareTo(unchangedFishBatch.getAvailableQuantity()));
+                    0,
+                    BigDecimal.valueOf(300)
+                            .compareTo(unchangedFishBatch.getAvailableQuantity()));
 
             assertEquals(
-                0,
-                storageExitRepository.findAll().stream()
-                    .filter(exit ->
-                        storageId.equals(exit.getStorage().getId()))
-                    .count());
+                    0,
+                    storageExitRepository.findAll().stream()
+                            .filter(exit -> storageId.equals(exit.getStorage().getId()))
+                            .count());
 
         } finally {
             if (savedStorage != null) {
                 final Long cleanupStorageId = savedStorage.getId();
 
                 var exitsToDelete = storageExitRepository.findAll().stream()
-                    .filter(exit ->
-                        cleanupStorageId.equals(exit.getStorage().getId()))
-                    .toList();
+                        .filter(exit -> cleanupStorageId.equals(exit.getStorage().getId()))
+                        .toList();
 
                 for (StorageExit exit : exitsToDelete) {
-                    var detailsToDelete =
-                        storageExitDetailRepository.findAll().stream()
-                            .filter(detail ->
-                                detail.getStorageExit() != null
-                                && exit.getStorageExitId().equals(
-                                    detail.getStorageExit()
-                                        .getStorageExitId()))
+                    var detailsToDelete = storageExitDetailRepository.findAll().stream()
+                            .filter(detail -> detail.getStorageExit() != null
+                                    && exit.getStorageExitId().equals(
+                                            detail.getStorageExit()
+                                                    .getStorageExitId()))
                             .toList();
 
                     storageExitDetailRepository.deleteAll(detailsToDelete);
@@ -948,7 +936,7 @@ public class StorageExitControllerIntegrationTest {
         }
     }
 
-        @Test
+    @Test
     public void testIntegrationExitWithZeroQuantityIsRejected()
             throws Exception {
 
@@ -975,19 +963,19 @@ public class StorageExitControllerIntegrationTest {
         storageItemRepository.save(storageItem);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-23T12:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "KG",
-                        "cantidad": 0
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-23T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 0
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -995,19 +983,19 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
 
         assertEquals(0, storageExitRepository.count());
 
         StorageItem unchangedItem = storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .orElseThrow();
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2000)));
+                0,
+                unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2000)));
     }
 
     @Test
@@ -1037,19 +1025,19 @@ public class StorageExitControllerIntegrationTest {
         storageItemRepository.save(storageItem);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-23T12:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "KG",
-                        "cantidad": -1
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-23T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": -1
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -1057,19 +1045,19 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
 
         assertEquals(0, storageExitRepository.count());
 
         StorageItem unchangedItem = storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .orElseThrow();
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2000)));
+                0,
+                unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2000)));
     }
 
     @Test
@@ -1099,19 +1087,19 @@ public class StorageExitControllerIntegrationTest {
         storageItemRepository.save(storageItem);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-23T12:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "KG",
-                        "cantidad": null
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-23T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": null
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -1119,19 +1107,19 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
 
         assertEquals(0, storageExitRepository.count());
 
         StorageItem unchangedItem = storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .orElseThrow();
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2000)));
+                0,
+                unchangedItem.getCantidad().compareTo(BigDecimal.valueOf(2000)));
     }
 
     @Test
@@ -1163,19 +1151,19 @@ public class StorageExitControllerIntegrationTest {
         storageItemRepository.save(item);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-23T12:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "batchId": %d,
-                        "selectedUnit": "UNIT",
-                        "cantidad": 1
-                    }
-                ]
-            }
-            """.formatted(
+                {
+                    "movementDateTime": "2026-10-23T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "batchId": %d,
+                            "selectedUnit": "UNIT",
+                            "cantidad": 1
+                        }
+                    ]
+                }
+                """.formatted(
                 savedStorage.getId(),
                 savedFood.getFoodId(),
                 batch.getId());
@@ -1183,19 +1171,19 @@ public class StorageExitControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
 
         assertEquals(0, storageExitRepository.count());
 
         StorageItem unchangedItem = storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .orElseThrow();
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .orElseThrow();
 
         assertEquals(
-            0,
-            BigDecimal.valueOf(2000).compareTo(unchangedItem.getCantidad()));
+                0,
+                BigDecimal.valueOf(2000).compareTo(unchangedItem.getCantidad()));
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -1254,25 +1242,25 @@ public class StorageExitControllerIntegrationTest {
             fishItem = storageItemRepository.save(fishItem);
 
             String requestBody = """
-                {
-                    "movementDateTime": "2026-10-23T12:00:00",
-                    "storageId": %d,
-                    "details": [
-                        {
-                            "foodId": %d,
-                            "batchId": %d,
-                            "selectedUnit": "KG",
-                            "cantidad": 0.5
-                        },
-                        {
-                            "foodId": %d,
-                            "batchId": %d,
-                            "selectedUnit": "UNIT",
-                            "cantidad": 1
-                        }
-                    ]
-                }
-                """.formatted(
+                    {
+                        "movementDateTime": "2026-10-23T12:00:00",
+                        "storageId": %d,
+                        "details": [
+                            {
+                                "foodId": %d,
+                                "batchId": %d,
+                                "selectedUnit": "KG",
+                                "cantidad": 0.5
+                            },
+                            {
+                                "foodId": %d,
+                                "batchId": %d,
+                                "selectedUnit": "UNIT",
+                                "cantidad": 1
+                            }
+                        ]
+                    }
+                    """.formatted(
                     savedStorage.getId(),
                     savedChicken.getFoodId(),
                     chickenBatch.getId(),
@@ -1282,57 +1270,53 @@ public class StorageExitControllerIntegrationTest {
             mockMvc.perform(post("/api/v1/storagesexit").header("Authorization", authorizationHeader)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
-                .andExpect(status().isBadRequest());
+                    .andExpect(status().isBadRequest());
 
             StorageItem unchangedChicken = storageItemRepository
-                .findByStorageIdAndFoodId(
-                    savedStorage.getId(),
-                    savedChicken.getFoodId())
-                .orElseThrow();
+                    .findByStorageIdAndFoodId(
+                            savedStorage.getId(),
+                            savedChicken.getFoodId())
+                    .orElseThrow();
 
             StorageItem unchangedFish = storageItemRepository
-                .findByStorageIdAndFoodId(
-                    savedStorage.getId(),
-                    savedFish.getFoodId())
-                .orElseThrow();
+                    .findByStorageIdAndFoodId(
+                            savedStorage.getId(),
+                            savedFish.getFoodId())
+                    .orElseThrow();
 
             assertEquals(
-                0,
-                BigDecimal.valueOf(2000)
-                    .compareTo(unchangedChicken.getCantidad()));
+                    0,
+                    BigDecimal.valueOf(2000)
+                            .compareTo(unchangedChicken.getCantidad()));
 
             assertEquals(
-                0,
-                BigDecimal.valueOf(2000)
-                    .compareTo(unchangedFish.getCantidad()));
+                    0,
+                    BigDecimal.valueOf(2000)
+                            .compareTo(unchangedFish.getCantidad()));
 
             final Long storageIdForAssertion = savedStorage.getId();
 
             assertEquals(
-                0,
-                storageExitRepository.findAll().stream()
-                    .filter(exit ->
-                        storageIdForAssertion.equals(
-                            exit.getStorage().getId()))
-                    .count());
+                    0,
+                    storageExitRepository.findAll().stream()
+                            .filter(exit -> storageIdForAssertion.equals(
+                                    exit.getStorage().getId()))
+                            .count());
 
         } finally {
             if (savedStorage != null) {
                 final Long storageId = savedStorage.getId();
 
                 var exitsToDelete = storageExitRepository.findAll().stream()
-                    .filter(exit ->
-                        storageId.equals(exit.getStorage().getId()))
-                    .toList();
+                        .filter(exit -> storageId.equals(exit.getStorage().getId()))
+                        .toList();
 
                 for (StorageExit exit : exitsToDelete) {
-                    var detailsToDelete =
-                        storageExitDetailRepository.findAll().stream()
-                            .filter(detail ->
-                                detail.getStorageExit() != null
-                                && exit.getStorageExitId().equals(
-                                    detail.getStorageExit()
-                                        .getStorageExitId()))
+                    var detailsToDelete = storageExitDetailRepository.findAll().stream()
+                            .filter(detail -> detail.getStorageExit() != null
+                                    && exit.getStorageExitId().equals(
+                                            detail.getStorageExit()
+                                                    .getStorageExitId()))
                             .toList();
 
                     storageExitDetailRepository.deleteAll(detailsToDelete);
@@ -1406,9 +1390,9 @@ public class StorageExitControllerIntegrationTest {
         storageExitRepository.save(exit3);
 
         mockMvc.perform(get("/api/v1/storagesexit").header("Authorization", authorizationHeader)
-                        .param("page", "0")
-                        .param("size", "2")
-                        .param("sort", "storageExitId,asc"))
+                .param("page", "0")
+                .param("size", "2")
+                .param("sort", "storageExitId,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.totalElements").value(3))
@@ -1419,9 +1403,9 @@ public class StorageExitControllerIntegrationTest {
                         .value(exit2.getStorageExitId()));
 
         mockMvc.perform(get("/api/v1/storagesexit").header("Authorization", authorizationHeader)
-                        .param("page", "1")
-                        .param("size", "2")
-                        .param("sort", "storageExitId,asc"))
+                .param("page", "1")
+                .param("size", "2")
+                .param("sort", "storageExitId,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.totalElements").value(3))
@@ -1458,9 +1442,9 @@ public class StorageExitControllerIntegrationTest {
         storageExitRepository.save(exit2);
 
         mockMvc.perform(get("/api/v1/storagesexit").header("Authorization", authorizationHeader)
-                        .param("page", "0")
-                        .param("size", "10")
-                        .param("sort", "storageExitId,desc"))
+                .param("page", "0")
+                .param("size", "10")
+                .param("sort", "storageExitId,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].storageExitId")

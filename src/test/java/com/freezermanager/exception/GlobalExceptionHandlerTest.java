@@ -10,30 +10,32 @@ import com.freezermanager.dto.ErrorResponse;
 
 public class GlobalExceptionHandlerTest {
     private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
+
     @Test
-    public void handleResourceNotFoundExceptionShouldReturnNotFound(){
+    public void handleResourceNotFoundExceptionShouldReturnNotFound() {
         NotFoundException ex = new NotFoundException("Recurso no encontrado");
 
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleNotFound(ex);
-        
+
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals(ex.getMessage(), response.getBody().message());
         assertEquals(404, response.getBody().status());
     }
+
     @Test
     public void illegalArgumentExceptionShouldReturn400BadRequest() {
-        IllegalArgumentException exception =
-            new IllegalArgumentException("No hay stock suficiente para realizar el retiro");
+        IllegalArgumentException exception = new IllegalArgumentException(
+                "No hay stock suficiente para realizar el retiro");
 
-        ResponseEntity<ErrorResponse> response =
-            exceptionHandler.handleIllegalArgument(exception);
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleIllegalArgument(exception);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals(exception.getMessage(), response.getBody().message());
         assertEquals(400, response.getBody().status());
     }
+
     @Test
-    public void genericErrorReturn500InternalServerErrorAndDefaultMessage(){
+    public void genericErrorReturn500InternalServerErrorAndDefaultMessage() {
         RuntimeException exception = new RuntimeException("Error inesperado");
         String expectedMessage = "Se ha producido un error inesperado";
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleGenericError(exception);

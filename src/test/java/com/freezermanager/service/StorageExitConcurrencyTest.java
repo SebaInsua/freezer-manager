@@ -94,12 +94,10 @@ class StorageExitConcurrencyTest {
     private void authenticateAs(String email) {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(
-            new UsernamePasswordAuthenticationToken(
-                email,
-                null,
-                List.of()
-            )
-        );
+                new UsernamePasswordAuthenticationToken(
+                        email,
+                        null,
+                        List.of()));
         SecurityContextHolder.setContext(context);
     }
 
@@ -134,8 +132,7 @@ class StorageExitConcurrencyTest {
 
         StorageEntry savedEntry = storageEntryRepository.saveAndFlush(entry);
 
-        StorageEntryDetail savedDetail =
-            storageEntryDetailRepository
+        StorageEntryDetail savedDetail = storageEntryDetailRepository
                 .findDetailsByStorageEntryId(savedEntry.getStorageEntryId())
                 .get(0);
 
@@ -161,16 +158,16 @@ class StorageExitConcurrencyTest {
         Long foodId = item.getFood().getFoodId();
 
         storageExitRepository.findAllByStorageId(storageId)
-            .forEach(exit -> {
-                storageExitDetailRepository
-                    .findDetailsByStorageExitId(exit.getStorageExitId())
-                    .forEach(storageExitDetailRepository::delete);
+                .forEach(exit -> {
+                    storageExitDetailRepository
+                            .findDetailsByStorageExitId(exit.getStorageExitId())
+                            .forEach(storageExitDetailRepository::delete);
 
-                storageExitRepository.delete(exit);
-            });
+                    storageExitRepository.delete(exit);
+                });
 
         storageItemRepository.findByStorageIdAndFoodId(storageId, foodId)
-            .ifPresent(storageItemRepository::delete);
+                .ifPresent(storageItemRepository::delete);
 
         if (batchId != null) {
             storageBatchRepository.findById(batchId).ifPresent(batch -> {
@@ -180,21 +177,21 @@ class StorageExitConcurrencyTest {
         }
 
         storageEntryRepository.findAll().stream()
-            .filter(entry -> entry.getStorage().getId().equals(storageId))
-            .forEach(entry -> {
-                storageEntryDetailRepository
-                    .findDetailsByStorageEntryId(entry.getStorageEntryId())
-                    .forEach(storageEntryDetailRepository::delete);
+                .filter(entry -> entry.getStorage().getId().equals(storageId))
+                .forEach(entry -> {
+                    storageEntryDetailRepository
+                            .findDetailsByStorageEntryId(entry.getStorageEntryId())
+                            .forEach(storageEntryDetailRepository::delete);
 
-                storageEntryRepository.delete(entry);
-            });
+                    storageEntryRepository.delete(entry);
+                });
 
         foodRepository.delete(item.getFood());
         storageRepository.delete(item.getStorage());
 
         if (ownerEmail != null) {
             userRepository.findByEmailIgnoreCase(ownerEmail)
-                .ifPresent(userRepository::delete);
+                    .ifPresent(userRepository::delete);
         }
 
         batchId = null;
@@ -207,9 +204,8 @@ class StorageExitConcurrencyTest {
 
         try {
             assertEquals(
-                0,
-                new BigDecimal("1000").compareTo(item.getCantidad())
-            );
+                    0,
+                    new BigDecimal("1000").compareTo(item.getCantidad()));
             assertNotNull(item.getId());
             assertNotNull(batchId);
         } finally {
@@ -228,17 +224,15 @@ class StorageExitConcurrencyTest {
 
         try {
             StorageExitDetailRequest detail = new StorageExitDetailRequest(
-                item.getFood().getFoodId(),
-                batchId,
-                UnitOfMeasure.G,
-                new BigDecimal("700")
-            );
+                    item.getFood().getFoodId(),
+                    batchId,
+                    UnitOfMeasure.G,
+                    new BigDecimal("700"));
 
             StorageExitRequest request = new StorageExitRequest(
-                LocalDateTime.now(),
-                item.getStorage().getId(),
-                List.of(detail)
-            );
+                    LocalDateTime.now(),
+                    item.getStorage().getId(),
+                    List.of(detail));
 
             Future<Boolean> firstExit = executor.submit(() -> {
                 authenticateAs(ownerEmail);
@@ -249,8 +243,8 @@ class StorageExitConcurrencyTest {
                 } catch (IllegalArgumentException e) {
                     if ("No hay stock suficiente para realizar el retiro"
                             .equals(e.getMessage())
-                        || "No hay stock suficiente en el lote seleccionado"
-                            .equals(e.getMessage())) {
+                            || "No hay stock suficiente en el lote seleccionado"
+                                    .equals(e.getMessage())) {
                         return false;
                     }
                     throw e;
@@ -268,8 +262,8 @@ class StorageExitConcurrencyTest {
                 } catch (IllegalArgumentException e) {
                     if ("No hay stock suficiente para realizar el retiro"
                             .equals(e.getMessage())
-                        || "No hay stock suficiente en el lote seleccionado"
-                            .equals(e.getMessage())) {
+                            || "No hay stock suficiente en el lote seleccionado"
+                                    .equals(e.getMessage())) {
                         return false;
                     }
                     throw e;
@@ -284,46 +278,40 @@ class StorageExitConcurrencyTest {
             boolean secondSucceeded = secondExit.get(10, TimeUnit.SECONDS);
 
             assertTrue(
-                firstSucceeded ^ secondSucceeded,
-                "Exactamente uno de los dos retiros debe completarse"
-            );
+                    firstSucceeded ^ secondSucceeded,
+                    "Exactamente uno de los dos retiros debe completarse");
 
             StorageItem remainingItem = storageItemRepository
-                .findByStorageIdAndFoodId(
-                    item.getStorage().getId(),
-                    item.getFood().getFoodId()
-                )
-                .orElseThrow();
+                    .findByStorageIdAndFoodId(
+                            item.getStorage().getId(),
+                            item.getFood().getFoodId())
+                    .orElseThrow();
 
             assertEquals(
-                0,
-                new BigDecimal("300").compareTo(remainingItem.getCantidad()),
-                "El stock final debe ser de 300 g"
-            );
+                    0,
+                    new BigDecimal("300").compareTo(remainingItem.getCantidad()),
+                    "El stock final debe ser de 300 g");
 
             StorageBatch remainingBatch = storageBatchRepository
-                .findById(batchId)
-                .orElseThrow();
+                    .findById(batchId)
+                    .orElseThrow();
 
             assertEquals(
-                0,
-                new BigDecimal("300").compareTo(remainingBatch.getAvailableQuantity()),
-                "El stock disponible del lote debe ser de 300 g"
-            );
+                    0,
+                    new BigDecimal("300").compareTo(remainingBatch.getAvailableQuantity()),
+                    "El stock disponible del lote debe ser de 300 g");
 
             assertTrue(
-                remainingBatch.isActive(),
-                "El lote debe continuar activo porque todavía tiene stock"
-            );
+                    remainingBatch.isActive(),
+                    "El lote debe continuar activo porque todavía tiene stock");
 
             assertEquals(
-                1,
-                storageExitRepository.findAll().stream()
-                    .filter(exit -> exit.getStorage().getId()
-                        .equals(item.getStorage().getId()))
-                    .count(),
-                "Debe registrarse exactamente un egreso"
-            );
+                    1,
+                    storageExitRepository.findAll().stream()
+                            .filter(exit -> exit.getStorage().getId()
+                                    .equals(item.getStorage().getId()))
+                            .count(),
+                    "Debe registrarse exactamente un egreso");
         } finally {
             startSignal.countDown();
             executor.shutdown();
@@ -333,8 +321,7 @@ class StorageExitConcurrencyTest {
 
                 if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
                     throw new IllegalStateException(
-                        "Los hilos de la prueba no finalizaron a tiempo"
-                    );
+                            "Los hilos de la prueba no finalizaron a tiempo");
                 }
             }
 

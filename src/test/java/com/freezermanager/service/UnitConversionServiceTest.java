@@ -11,15 +11,13 @@ import com.freezermanager.domain.food.UnitOfMeasure;
 
 public class UnitConversionServiceTest {
 
-    private final UnitConversionService unitConversionService =
-            new UnitConversionService();
+    private final UnitConversionService unitConversionService = new UnitConversionService();
 
     @Test
     public void shouldConvertKilogramsToGrams() {
         BigDecimal result = unitConversionService.toInventoryUnit(
                 new BigDecimal("2"),
-                UnitOfMeasure.KG
-        );
+                UnitOfMeasure.KG);
 
         assertEquals(0, result.compareTo(new BigDecimal("2000")));
     }
@@ -28,8 +26,7 @@ public class UnitConversionServiceTest {
     public void shouldKeepGramsUnchanged() {
         BigDecimal result = unitConversionService.toInventoryUnit(
                 new BigDecimal("500"),
-                UnitOfMeasure.G
-        );
+                UnitOfMeasure.G);
 
         assertEquals(0, result.compareTo(new BigDecimal("500")));
     }
@@ -38,8 +35,7 @@ public class UnitConversionServiceTest {
     public void shouldKeepUnitsUnchanged() {
         BigDecimal result = unitConversionService.toInventoryUnit(
                 new BigDecimal("3"),
-                UnitOfMeasure.UNIT
-        );
+                UnitOfMeasure.UNIT);
 
         assertEquals(0, result.compareTo(new BigDecimal("3")));
     }
@@ -50,9 +46,7 @@ public class UnitConversionServiceTest {
                 IllegalArgumentException.class,
                 () -> unitConversionService.toInventoryUnit(
                         null,
-                        UnitOfMeasure.KG
-                )
-        );
+                        UnitOfMeasure.KG));
     }
 
     @Test
@@ -61,8 +55,6 @@ public class UnitConversionServiceTest {
                 IllegalArgumentException.class,
                 () -> unitConversionService.toInventoryUnit(
                         new BigDecimal("2"),
-                        null
-                )
-        );
+                        null));
     }
 }

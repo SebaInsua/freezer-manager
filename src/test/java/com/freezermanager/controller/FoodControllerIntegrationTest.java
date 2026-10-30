@@ -42,26 +42,26 @@ import com.jayway.jsonpath.JsonPath;
 @ActiveProfiles("test")
 @Transactional
 public class FoodControllerIntegrationTest {
-        
-        @Autowired
-        private WebApplicationContext webApplicationContext;
 
-        @Autowired
-        private FoodRepository foodRepository;
+    @Autowired
+    private WebApplicationContext webApplicationContext;
 
-        @Autowired
-        private UserRepository userRepository;
+    @Autowired
+    private FoodRepository foodRepository;
 
-        @Autowired
-        private JwtService jwtService;
+    @Autowired
+    private UserRepository userRepository;
 
-        @Autowired
-        private FilterChainProxy springSecurityFilterChain;
+    @Autowired
+    private JwtService jwtService;
 
-        private MockMvc mockMvc;
+    @Autowired
+    private FilterChainProxy springSecurityFilterChain;
 
-        @BeforeEach
-        void setUp() {
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
         User user = new User();
         user.setEmail("food-test@example.com");
         user.setPassword("test-password-hash");
@@ -77,454 +77,452 @@ public class FoodControllerIntegrationTest {
                 .addFilters(springSecurityFilterChain)
                 .defaultRequest(defaultRequest)
                 .build();
-        }
+    }
 
-        @Test
-        public void testIntegrationWhenFoodsItsEmpty() throws Exception {
+    @Test
+    public void testIntegrationWhenFoodsItsEmpty() throws Exception {
         mockMvc.perform(get("/api/v1/foods"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(0)))
                 .andExpect(jsonPath("$.empty").value(true))
                 .andExpect(jsonPath("$.totalElements").value(0))
                 .andExpect(jsonPath("$.totalPages").value(0));
+    }
+
+    @Test
+    public void testIntegrationWhenFoodsHaveAliments() throws Exception {
+        Food foodItem = new Food();
+        Food foodItem2 = new Food();
+        Set<UnitOfMeasure> setUnitOfMeasures = new LinkedHashSet<>();
+        setUnitOfMeasures.add(UnitOfMeasure.KG);
+        setUnitOfMeasures.add(UnitOfMeasure.G);
+
+        foodItem.setName("Tomate");
+        foodItem.setCategory(FoodCategory.VEGETABLE);
+        foodItem.setUnitOfMeasures(setUnitOfMeasures);
+        foodItem2.setName("Matambre");
+        foodItem2.setCategory(FoodCategory.MEAT);
+        foodItem2.setUnitOfMeasures(setUnitOfMeasures);
+        foodRepository.save(foodItem);
+        foodRepository.save(foodItem2);
+
+        mockMvc.perform(get("/api/v1/foods"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].name").value("Matambre"))
+                .andExpect(jsonPath("$.content[0].category").value("MEAT"))
+                .andExpect(jsonPath("$.content[0].unitOfMeasures",
+                        containsInAnyOrder("KG", "G")))
+                .andExpect(jsonPath("$.content[1].name").value("Tomate"))
+                .andExpect(jsonPath("$.content[1].category").value("VEGETABLE"))
+                .andExpect(jsonPath("$.content[1].unitOfMeasures",
+                        containsInAnyOrder("KG", "G")))
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    public void testIntegrationFoodsById() throws Exception {
+        Food foodItem = new Food();
+        Set<UnitOfMeasure> setUnitOfMeasures = new LinkedHashSet<>();
+        setUnitOfMeasures.add(UnitOfMeasure.KG);
+        setUnitOfMeasures.add(UnitOfMeasure.G);
+
+        foodItem.setName("Tomate");
+        foodItem.setCategory(FoodCategory.VEGETABLE);
+        foodItem.setUnitOfMeasures(setUnitOfMeasures);
+
+        Food itemGuardado = foodRepository.save(foodItem);
+
+        mockMvc.perform(get("/api/v1/foods/{id}", itemGuardado.getFoodId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.foodId").value(foodItem.getFoodId()))
+                .andExpect(jsonPath("$.name").value("Tomate"))
+                .andExpect(jsonPath("$.category").value("VEGETABLE"))
+                .andExpect(jsonPath("$.unitOfMeasures", containsInAnyOrder("KG", "G")));
+    }
+
+    @Test
+    public void testIntegrationFoodWhenIdDoesntExist() throws Exception {
+        Food foodItem = new Food();
+        Set<UnitOfMeasure> setUnitOfMeasures = new LinkedHashSet<>();
+        setUnitOfMeasures.add(UnitOfMeasure.KG);
+        setUnitOfMeasures.add(UnitOfMeasure.G);
+
+        foodItem.setName("Tomate");
+        foodItem.setCategory(FoodCategory.VEGETABLE);
+        foodItem.setUnitOfMeasures(setUnitOfMeasures);
+
+        Food itemGuardado = foodRepository.save(foodItem);
+        Long idInexistente = itemGuardado.getFoodId() + 1;
+        while (foodRepository.existsById(idInexistente)) {
+            idInexistente += 1;
         }
 
-        @Test
-        public void testIntegrationWhenFoodsHaveAliments() throws Exception{
-                Food foodItem = new Food();
-                Food foodItem2 = new Food();
-                Set<UnitOfMeasure> setUnitOfMeasures = new LinkedHashSet<>();
-                setUnitOfMeasures.add(UnitOfMeasure.KG);
-                setUnitOfMeasures.add(UnitOfMeasure.G);
+        String messageExpected = "No existe un alimento con el ID: " + idInexistente;
 
-                foodItem.setName("Tomate");
-                foodItem.setCategory(FoodCategory.VEGETABLE);
-                foodItem.setUnitOfMeasures(setUnitOfMeasures);
-                foodItem2.setName("Matambre");
-                foodItem2.setCategory(FoodCategory.MEAT);
-                foodItem2.setUnitOfMeasures(setUnitOfMeasures);
-                foodRepository.save(foodItem);
-                foodRepository.save(foodItem2);
+        mockMvc.perform(get("/api/v1/foods/{id}", idInexistente))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value(messageExpected))
+                .andExpect(jsonPath("$.status").value(404));
+    }
 
-                mockMvc.perform(get("/api/v1/foods"))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.content", hasSize(2)))
-                        .andExpect(jsonPath("$.content[0].name").value("Matambre"))
-                        .andExpect(jsonPath("$.content[0].category").value("MEAT"))
-                        .andExpect(jsonPath("$.content[0].unitOfMeasures",
-                                containsInAnyOrder("KG", "G")))
-                        .andExpect(jsonPath("$.content[1].name").value("Tomate"))
-                        .andExpect(jsonPath("$.content[1].category").value("VEGETABLE"))
-                        .andExpect(jsonPath("$.content[1].unitOfMeasures",
-                                containsInAnyOrder("KG", "G")))
-                        .andExpect(jsonPath("$.totalElements").value(2));
-        }
-
-        @Test
-        public void testIntegrationFoodsById() throws Exception{
-                Food foodItem = new Food();
-                Set<UnitOfMeasure> setUnitOfMeasures = new LinkedHashSet<>();
-                setUnitOfMeasures.add(UnitOfMeasure.KG);
-                setUnitOfMeasures.add(UnitOfMeasure.G);
-
-                foodItem.setName("Tomate");
-                foodItem.setCategory(FoodCategory.VEGETABLE);
-                foodItem.setUnitOfMeasures(setUnitOfMeasures);
-
-                Food itemGuardado = foodRepository.save(foodItem);
-
-                mockMvc.perform(get("/api/v1/foods/{id}",itemGuardado.getFoodId()))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.foodId").value(foodItem.getFoodId()))
-                        .andExpect(jsonPath("$.name").value("Tomate"))
-                        .andExpect(jsonPath("$.category").value("VEGETABLE"))
-                        .andExpect(jsonPath("$.unitOfMeasures",containsInAnyOrder("KG","G")));
-        }
-
-        @Test
-        public void testIntegrationFoodWhenIdDoesntExist() throws Exception{
-                Food foodItem = new Food();
-                Set<UnitOfMeasure> setUnitOfMeasures = new LinkedHashSet<>();
-                setUnitOfMeasures.add(UnitOfMeasure.KG);
-                setUnitOfMeasures.add(UnitOfMeasure.G);
-
-                foodItem.setName("Tomate");
-                foodItem.setCategory(FoodCategory.VEGETABLE);
-                foodItem.setUnitOfMeasures(setUnitOfMeasures);
-
-                Food itemGuardado = foodRepository.save(foodItem);
-                Long idInexistente = itemGuardado.getFoodId()+1;
-                while(foodRepository.existsById(idInexistente)){
-                idInexistente += 1;
+    @Test
+    public void testIntegrationCreateFood() throws Exception {
+        String requestBody = """
+                {
+                "name": "Pollo",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
                 }
+                """;
 
-                String messageExpected = "No existe un alimento con el ID: " + idInexistente;
+        mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.foodId").isNumber())
+                .andExpect(jsonPath("$.name").value("Pollo"))
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.unitOfMeasures[0]").value("KG"));
+    }
 
-                mockMvc.perform(get("/api/v1/foods/{id}",idInexistente))
-                        .andExpect(status().isNotFound())
-                        .andExpect(jsonPath("$.message").value(messageExpected))
-                        .andExpect(jsonPath("$.status").value(404));
-        }
+    @Test
+    public void testIntegrationCreateFoodWithDuplicateNameIgnoringCase() throws Exception {
+        String firstRequest = """
+                {
+                "name": "Pollo",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                @Test
-        public void testIntegrationCreateFood() throws Exception {
-                String requestBody = """
-                        {
-                        "name": "Pollo",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+        String duplicateRequest = """
+                {
+                "name": "POLLO",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(requestBody))
-                        .andExpect(status().isCreated())
-                        .andExpect(jsonPath("$.foodId").isNumber())
-                        .andExpect(jsonPath("$.name").value("Pollo"))
-                        .andExpect(jsonPath("$.active").value(true))
-                        .andExpect(jsonPath("$.unitOfMeasures[0]").value("KG"));
-        }
+        mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(firstRequest))
+                .andExpect(status().isCreated());
 
-        @Test
-        public void testIntegrationCreateFoodWithDuplicateNameIgnoringCase() throws Exception {
-                String firstRequest = """
-                        {
-                        "name": "Pollo",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+        mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(duplicateRequest))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
 
-                String duplicateRequest = """
-                        {
-                        "name": "POLLO",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+    @Test
+    public void testIntegrationCreateFoodWithBlankName() throws Exception {
+        String requestBody = """
+                {
+                "name": "   ",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(firstRequest))
-                        .andExpect(status().isCreated());
-
-                mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(duplicateRequest))
-                        .andExpect(status().isConflict())
-                        .andExpect(jsonPath("$.status").value(409));
-        }
-
-        @Test
-        public void testIntegrationCreateFoodWithBlankName() throws Exception {
-                String requestBody = """
-                        {
-                        "name": "   ",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
-
-                mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(requestBody))
-                        .andExpect(status().isBadRequest())
-                        .andExpect(jsonPath("$.message")
+        mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
                         .value("El nombre no puede estar vacio."))
-                        .andExpect(jsonPath("$.status").value(400));
-        }
+                .andExpect(jsonPath("$.status").value(400));
+    }
 
-        @Test
-        public void testIntegrationCreateFoodWithoutUnits() throws Exception {
-                String requestBody = """
-                        {
-                        "name": "Pollo",
-                        "category": "MEAT",
-                        "unitOfMeasures": []
-                        }
-                        """;
+    @Test
+    public void testIntegrationCreateFoodWithoutUnits() throws Exception {
+        String requestBody = """
+                {
+                "name": "Pollo",
+                "category": "MEAT",
+                "unitOfMeasures": []
+                }
+                """;
 
-                mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(requestBody))
-                        .andExpect(status().isBadRequest());
-        }
+        mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(requestBody))
+                .andExpect(status().isBadRequest());
+    }
 
-                @Test
-        public void testIntegrationCreateFoodWithoutCategory() throws Exception {
-                String requestBody = """
-                        {
-                        "name": "Pollo",
-                        "category": null,
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+    @Test
+    public void testIntegrationCreateFoodWithoutCategory() throws Exception {
+        String requestBody = """
+                {
+                "name": "Pollo",
+                "category": null,
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(requestBody))
-                        .andExpect(status().isBadRequest());
-        }
+        mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(requestBody))
+                .andExpect(status().isBadRequest());
+    }
 
     // ACTUALIZACION EXITOSA
 
-        @Test
-        public void testIntegrationUpdateFood() throws Exception {
-                String createBody = """
-                        {
-                        "name": "Pollo",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+    @Test
+    public void testIntegrationUpdateFood() throws Exception {
+        String createBody = """
+                {
+                "name": "Pollo",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                MvcResult result = mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(createBody))
-                        .andExpect(status().isCreated())
-                        .andReturn();
+        MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(createBody))
+                .andExpect(status().isCreated())
+                .andReturn();
 
-                String response = result.getResponse().getContentAsString();
-                Long foodId = ((Number) JsonPath.read(response, "$.foodId")).longValue();
+        String response = result.getResponse().getContentAsString();
+        Long foodId = ((Number) JsonPath.read(response, "$.foodId")).longValue();
 
-                String updateBody = """
-                        {
-                        "name": "Pollo orgánico",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG", "G"]
-                        }
-                        """;
+        String updateBody = """
+                {
+                "name": "Pollo orgánico",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG", "G"]
+                }
+                """;
 
-                mockMvc.perform(put("/api/v1/foods/" + foodId)
-                                .contentType("application/json")
-                                .content(updateBody))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.name").value("Pollo orgánico"))
-                        .andExpect(jsonPath("$.category").value("MEAT"))
-                        .andExpect(jsonPath("$.active").value(true))
-                        .andExpect(jsonPath("$.unitOfMeasures", containsInAnyOrder("KG", "G")));
-        }
+        mockMvc.perform(put("/api/v1/foods/" + foodId)
+                .contentType("application/json")
+                .content(updateBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Pollo orgánico"))
+                .andExpect(jsonPath("$.category").value("MEAT"))
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.unitOfMeasures", containsInAnyOrder("KG", "G")));
+    }
 
     // ID INEXISTENTE AL ACTUALIZAR
 
-        @Test
-        public void testIntegrationUpdateFoodNotFound() throws Exception {
-                String requestBody = """
-                        {
-                        "name": "Pollo",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+    @Test
+    public void testIntegrationUpdateFoodNotFound() throws Exception {
+        String requestBody = """
+                {
+                "name": "Pollo",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                mockMvc.perform(put("/api/v1/foods/9999")
-                                .contentType("application/json")
-                                .content(requestBody))
-                        .andExpect(status().isNotFound());
-        }
+        mockMvc.perform(put("/api/v1/foods/9999")
+                .contentType("application/json")
+                .content(requestBody))
+                .andExpect(status().isNotFound());
+    }
 
     // NOMBRE DUPLICADO IGNORANDO MAYUSCULAS AL ACTUALIZAR
 
-        @Test
-        public void testIntegrationUpdateFoodWithDuplicateName() throws Exception {
-                String firstFood = """
-                        {
-                        "name": "Pollo",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+    @Test
+    public void testIntegrationUpdateFoodWithDuplicateName() throws Exception {
+        String firstFood = """
+                {
+                "name": "Pollo",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                String secondFood = """
-                        {
-                        "name": "Pescado",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+        String secondFood = """
+                {
+                "name": "Pescado",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(firstFood))
-                        .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(firstFood))
+                .andExpect(status().isCreated());
 
-                MvcResult result = mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(secondFood))
-                        .andExpect(status().isCreated())
-                        .andReturn();
+        MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(secondFood))
+                .andExpect(status().isCreated())
+                .andReturn();
 
-                Long foodId = ((Number) JsonPath.read(
+        Long foodId = ((Number) JsonPath.read(
                 result.getResponse().getContentAsString(), "$.foodId")).longValue();
 
-                String updateBody = """
-                        {
-                        "name": "POLLO",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+        String updateBody = """
+                {
+                "name": "POLLO",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                mockMvc.perform(put("/api/v1/foods/" + foodId)
-                                .contentType("application/json")
-                                .content(updateBody))
-                        .andExpect(status().isConflict());
-        }
+        mockMvc.perform(put("/api/v1/foods/" + foodId)
+                .contentType("application/json")
+                .content(updateBody))
+                .andExpect(status().isConflict());
+    }
 
     // NOMBRE VACIO AL ACTUALIZAR
 
-        @Test
-        public void testIntegrationUpdateFoodWithBlankName() throws Exception {
-                String createBody = """
-                        {
-                        "name": "Pollo",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+    @Test
+    public void testIntegrationUpdateFoodWithBlankName() throws Exception {
+        String createBody = """
+                {
+                "name": "Pollo",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                MvcResult result = mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(createBody))
-                        .andExpect(status().isCreated())
-                        .andReturn();
+        MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(createBody))
+                .andExpect(status().isCreated())
+                .andReturn();
 
-                Long foodId = ((Number) JsonPath.read(
-                        result.getResponse().getContentAsString(), "$.foodId")).longValue();
+        Long foodId = ((Number) JsonPath.read(
+                result.getResponse().getContentAsString(), "$.foodId")).longValue();
 
-                String updateBody = """
-                        {
-                        "name": " ",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+        String updateBody = """
+                {
+                "name": " ",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                mockMvc.perform(put("/api/v1/foods/" + foodId)
-                                .contentType("application/json")
-                                .content(updateBody))
-                        .andExpect(status().isBadRequest());
-        }
+        mockMvc.perform(put("/api/v1/foods/" + foodId)
+                .contentType("application/json")
+                .content(updateBody))
+                .andExpect(status().isBadRequest());
+    }
 
     // UNIDADES DE MEDIDA VACIAS AL ACTUALIZAR
 
-        @Test
-        public void testIntegrationUpdateFoodWithoutUnits() throws Exception {
-                String createBody = """
-                        {
-                        "name": "Pollo",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+    @Test
+    public void testIntegrationUpdateFoodWithoutUnits() throws Exception {
+        String createBody = """
+                {
+                "name": "Pollo",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                MvcResult result = mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(createBody))
-                        .andExpect(status().isCreated())
-                        .andReturn();
+        MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(createBody))
+                .andExpect(status().isCreated())
+                .andReturn();
 
-                Long foodId = ((Number) JsonPath.read(
+        Long foodId = ((Number) JsonPath.read(
                 result.getResponse().getContentAsString(), "$.foodId")).longValue();
 
-                String updateBody = """
-                        {
-                        "name": "Pollo",
-                        "category": "MEAT",
-                        "unitOfMeasures": []
-                        }
-                        """;
+        String updateBody = """
+                {
+                "name": "Pollo",
+                "category": "MEAT",
+                "unitOfMeasures": []
+                }
+                """;
 
-                mockMvc.perform(put("/api/v1/foods/" + foodId)
-                                .contentType("application/json")
-                                .content(updateBody))
-                        .andExpect(status().isBadRequest());
-        }
+        mockMvc.perform(put("/api/v1/foods/" + foodId)
+                .contentType("application/json")
+                .content(updateBody))
+                .andExpect(status().isBadRequest());
+    }
 
-        @Test
-        public void testIntegrationGetFoodsReturnsOnlyActiveFoods() throws Exception {
-                foodRepository.save(createFood("Pollo", true));
-                foodRepository.save(createFood("Pescado", false));
+    @Test
+    public void testIntegrationGetFoodsReturnsOnlyActiveFoods() throws Exception {
+        foodRepository.save(createFood("Pollo", true));
+        foodRepository.save(createFood("Pescado", false));
 
-                mockMvc.perform(get("/api/v1/foods"))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.content", hasSize(1)))
-                        .andExpect(jsonPath("$.content[0].name").value("Pollo"))
-                        .andExpect(jsonPath("$.content[0].active").value(true))
-                        .andExpect(jsonPath("$.totalElements").value(1));
-        }
+        mockMvc.perform(get("/api/v1/foods"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].name").value("Pollo"))
+                .andExpect(jsonPath("$.content[0].active").value(true))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
 
-        @Test
-        public void testIntegrationGetFoodsWithActiveTrue() throws Exception {
+    @Test
+    public void testIntegrationGetFoodsWithActiveTrue() throws Exception {
         foodRepository.save(createFood("Pollo", true));
         foodRepository.save(createFood("Pescado", false));
         foodRepository.save(createFood("Carne", true));
 
         mockMvc.perform(get("/api/v1/foods")
-                        .param("active", "true"))
+                .param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[*].active",
                         everyItem(equalTo(true))))
                 .andExpect(jsonPath("$.totalElements").value(2));
-        }
+    }
 
-        @Test
-        public void testIntegrationGetFoodsWithActiveFalse() throws Exception {
-                foodRepository.save(createFood("Pollo", true));
-                foodRepository.save(createFood("Pescado", false));
-                foodRepository.save(createFood("Carne", false));
+    @Test
+    public void testIntegrationGetFoodsWithActiveFalse() throws Exception {
+        foodRepository.save(createFood("Pollo", true));
+        foodRepository.save(createFood("Pescado", false));
+        foodRepository.save(createFood("Carne", false));
 
-                mockMvc.perform(get("/api/v1/foods")
-                                .param("active", "false"))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.content", hasSize(2)))
-                        .andExpect(jsonPath("$.content[*].active",
-                                everyItem(equalTo(false))))
-                        .andExpect(jsonPath("$.totalElements").value(2));
-        }
+        mockMvc.perform(get("/api/v1/foods")
+                .param("active", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[*].active",
+                        everyItem(equalTo(false))))
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
 
+    @Test
+    public void testIntegrationUpdateFoodWithIncompatibleUnits() throws Exception {
+        String createBody = """
+                {
+                "name": "Harina",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG"]
+                }
+                """;
 
-        @Test
-        public void testIntegrationUpdateFoodWithIncompatibleUnits() throws Exception {
-                String createBody = """
-                        {
-                        "name": "Harina",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG"]
-                        }
-                        """;
+        MvcResult result = mockMvc.perform(post("/api/v1/foods")
+                .contentType("application/json")
+                .content(createBody))
+                .andExpect(status().isCreated())
+                .andReturn();
 
-                MvcResult result = mockMvc.perform(post("/api/v1/foods")
-                                .contentType("application/json")
-                                .content(createBody))
-                        .andExpect(status().isCreated())
-                        .andReturn();
+        Long foodId = ((Number) JsonPath.read(
+                result.getResponse().getContentAsString(), "$.foodId")).longValue();
 
-                Long foodId = ((Number) JsonPath.read(
-                        result.getResponse().getContentAsString(), "$.foodId")).longValue();
+        String updateBody = """
+                {
+                "name": "Harina",
+                "category": "MEAT",
+                "unitOfMeasures": ["KG", "UNIT"]
+                }
+                """;
 
-                String updateBody = """
-                        {
-                        "name": "Harina",
-                        "category": "MEAT",
-                        "unitOfMeasures": ["KG", "UNIT"]
-                        }
-                        """;
+        mockMvc.perform(put("/api/v1/foods/" + foodId)
+                .contentType("application/json")
+                .content(updateBody))
+                .andExpect(status().isBadRequest());
 
-                mockMvc.perform(put("/api/v1/foods/" + foodId)
-                                .contentType("application/json")
-                                .content(updateBody))
-                        .andExpect(status().isBadRequest());
+        Food foodAfterUpdate = foodRepository.findById(foodId).orElseThrow();
+        assertEquals(Set.of(UnitOfMeasure.KG), foodAfterUpdate.getUnitOfMeasures());
+    }
 
-                Food foodAfterUpdate = foodRepository.findById(foodId).orElseThrow();
-                assertEquals(Set.of(UnitOfMeasure.KG), foodAfterUpdate.getUnitOfMeasures());
-        }
-
-
-        @Test
-        public void testIntegrationGetFoodsWithPagination() throws Exception {
+    @Test
+    public void testIntegrationGetFoodsWithPagination() throws Exception {
         foodRepository.save(createFood("Arroz", true));
         foodRepository.save(createFood("Banana", true));
         foodRepository.save(createFood("Carne", true));
@@ -532,8 +530,8 @@ public class FoodControllerIntegrationTest {
         foodRepository.save(createFood("Espinaca", true));
 
         mockMvc.perform(get("/api/v1/foods")
-                        .param("page", "0")
-                        .param("size", "2"))
+                .param("page", "0")
+                .param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].name").value("Arroz"))
@@ -542,10 +540,10 @@ public class FoodControllerIntegrationTest {
                 .andExpect(jsonPath("$.size").value(2))
                 .andExpect(jsonPath("$.totalElements").value(5))
                 .andExpect(jsonPath("$.totalPages").value(3));
-        }
+    }
 
-        @Test
-        public void testIntegrationGetFoodsWithSecondPage() throws Exception {
+    @Test
+    public void testIntegrationGetFoodsWithSecondPage() throws Exception {
         foodRepository.save(createFood("Arroz", true));
         foodRepository.save(createFood("Banana", true));
         foodRepository.save(createFood("Carne", true));
@@ -553,8 +551,8 @@ public class FoodControllerIntegrationTest {
         foodRepository.save(createFood("Espinaca", true));
 
         mockMvc.perform(get("/api/v1/foods")
-                        .param("page", "1")
-                        .param("size", "2"))
+                .param("page", "1")
+                .param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].name").value("Carne"))
@@ -563,25 +561,25 @@ public class FoodControllerIntegrationTest {
                 .andExpect(jsonPath("$.size").value(2))
                 .andExpect(jsonPath("$.totalElements").value(5))
                 .andExpect(jsonPath("$.totalPages").value(3));
-        }
+    }
 
-        @Test
-        public void testIntegrationGetFoodsWithDescendingSort() throws Exception {
+    @Test
+    public void testIntegrationGetFoodsWithDescendingSort() throws Exception {
         foodRepository.save(createFood("Arroz", true));
         foodRepository.save(createFood("Banana", true));
         foodRepository.save(createFood("Carne", true));
 
         mockMvc.perform(get("/api/v1/foods")
-                        .param("sort", "name,desc"))
+                .param("sort", "name,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(3)))
                 .andExpect(jsonPath("$.content[0].name").value("Carne"))
                 .andExpect(jsonPath("$.content[1].name").value("Banana"))
                 .andExpect(jsonPath("$.content[2].name").value("Arroz"));
-        }
+    }
 
-        @Test
-        public void testIntegrationGetInactiveFoodsWithPagination() throws Exception {
+    @Test
+    public void testIntegrationGetInactiveFoodsWithPagination() throws Exception {
         foodRepository.save(createFood("Arroz", false));
         foodRepository.save(createFood("Banana", false));
         foodRepository.save(createFood("Carne", false));
@@ -589,9 +587,9 @@ public class FoodControllerIntegrationTest {
         foodRepository.save(createFood("Espinaca", true));
 
         mockMvc.perform(get("/api/v1/foods")
-                        .param("active", "false")
-                        .param("page", "0")
-                        .param("size", "2"))
+                .param("active", "false")
+                .param("page", "0")
+                .param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[*].active",
@@ -602,11 +600,11 @@ public class FoodControllerIntegrationTest {
                 .andExpect(jsonPath("$.size").value(2))
                 .andExpect(jsonPath("$.totalElements").value(4))
                 .andExpect(jsonPath("$.totalPages").value(2));
-        }
+    }
 
-        @Test
-        public void testIntegrationUserCannotAccessAnotherUsersFood()
-                throws Exception {
+    @Test
+    public void testIntegrationUserCannotAccessAnotherUsersFood()
+            throws Exception {
 
         User otherUser = new User();
         otherUser.setEmail("other-food-test@example.com");
@@ -624,83 +622,77 @@ public class FoodControllerIntegrationTest {
 
         mockMvc.perform(get("/api/v1/foods/{id}", savedFood.getFoodId()))
                 .andExpect(status().isNotFound());
-        }
+    }
 
+    @Test
+    public void testIntegrationUserCannotUpdateAnotherUsersFood()
+            throws Exception {
 
-        @Test
-        public void testIntegrationUserCannotUpdateAnotherUsersFood()
-                throws Exception {
+        User otherUser = new User();
+        otherUser.setEmail("other-update-test@example.com");
+        otherUser.setPassword("test-password-hash");
+        User savedOtherUser = userRepository.save(otherUser);
 
-                User otherUser = new User();
-                otherUser.setEmail("other-update-test@example.com");
-                otherUser.setPassword("test-password-hash");
-                User savedOtherUser = userRepository.save(otherUser);
+        Food food = new Food();
+        food.setName("Alimento ajeno");
+        food.setCategory(FoodCategory.MEAT);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        food.setActive(true);
+        food.setOwner(savedOtherUser);
 
-                Food food = new Food();
-                food.setName("Alimento ajeno");
-                food.setCategory(FoodCategory.MEAT);
-                food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
-                food.setActive(true);
-                food.setOwner(savedOtherUser);
+        Food savedFood = foodRepository.save(food);
 
-                Food savedFood = foodRepository.save(food);
+        String requestBody = """
+                {
+                        "name": "Alimento modificado",
+                        "category": "MEAT",
+                        "unitOfMeasures": ["KG"]
+                }
+                """;
 
-                String requestBody = """
-                        {
-                                "name": "Alimento modificado",
-                                "category": "MEAT",
-                                "unitOfMeasures": ["KG"]
-                        }
-                        """;
+        mockMvc.perform(put("/api/v1/foods/{id}", savedFood.getFoodId())
+                .contentType("application/json")
+                .content(requestBody))
+                .andExpect(status().isNotFound());
+    }
 
-                mockMvc.perform(put("/api/v1/foods/{id}", savedFood.getFoodId())
-                                .contentType("application/json")
-                                .content(requestBody))
-                        .andExpect(status().isNotFound());
-        }
+    @Test
+    public void testIntegrationUserCannotDeactivateAnotherUsersFood()
+            throws Exception {
 
+        User otherUser = new User();
+        otherUser.setEmail("other-deactivate-test@example.com");
+        otherUser.setPassword("test-password-hash");
+        User savedOtherUser = userRepository.save(otherUser);
 
-        @Test
-        public void testIntegrationUserCannotDeactivateAnotherUsersFood()
-                throws Exception {
+        Food food = new Food();
+        food.setName("Alimento ajeno");
+        food.setCategory(FoodCategory.MEAT);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        food.setActive(true);
+        food.setOwner(savedOtherUser);
 
-                User otherUser = new User();
-                otherUser.setEmail("other-deactivate-test@example.com");
-                otherUser.setPassword("test-password-hash");
-                User savedOtherUser = userRepository.save(otherUser);
+        Food savedFood = foodRepository.save(food);
 
-                Food food = new Food();
-                food.setName("Alimento ajeno");
-                food.setCategory(FoodCategory.MEAT);
-                food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
-                food.setActive(true);
-                food.setOwner(savedOtherUser);
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch(
+                                "/api/v1/foods/{id}/deactivate",
+                                savedFood.getFoodId()))
+                .andExpect(status().isNotFound());
 
-                Food savedFood = foodRepository.save(food);
+        Food foodAfterRequest = foodRepository.findById(savedFood.getFoodId())
+                .orElseThrow();
 
-                mockMvc.perform(
-                                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                                        .patch(
-                                                "/api/v1/foods/{id}/deactivate",
-                                                savedFood.getFoodId()
-                                        )
-                        )
-                        .andExpect(status().isNotFound());
+        assertTrue(foodAfterRequest.isActive());
+    }
 
-                Food foodAfterRequest = foodRepository.findById(savedFood.getFoodId())
-                        .orElseThrow();
-
-                assertTrue(foodAfterRequest.isActive());
-        }
-
-
-
-        private Food createFood(String name, boolean active) {
-                Food food = new Food();
-                food.setName(name);
-                food.setCategory(FoodCategory.MEAT);
-                food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
-                food.setActive(active);
-                return food;
-        }
+    private Food createFood(String name, boolean active) {
+        Food food = new Food();
+        food.setName(name);
+        food.setCategory(FoodCategory.MEAT);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
+        food.setActive(active);
+        return food;
+    }
 }

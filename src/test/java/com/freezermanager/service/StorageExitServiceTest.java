@@ -47,598 +47,540 @@ import com.freezermanager.repository.StorageRepository;
 @ExtendWith(MockitoExtension.class)
 class StorageExitServiceTest {
 
-        private static final String AUTHENTICATED_EMAIL = "usuario@test.com";
+    private static final String AUTHENTICATED_EMAIL = "usuario@test.com";
 
-        @Mock
-        private StorageExitRepository storageExitRepository;
+    @Mock
+    private StorageExitRepository storageExitRepository;
 
-        @Mock
-        private StorageExitDetailRepository storageExitDetailRepository;
+    @Mock
+    private StorageExitDetailRepository storageExitDetailRepository;
 
-        @Mock
-        private StorageRepository storageRepository;
+    @Mock
+    private StorageRepository storageRepository;
 
-        @Mock
-        private FoodService foodService;
+    @Mock
+    private FoodService foodService;
 
-        @Mock
-        private StorageItemRepository storageItemRepository;
+    @Mock
+    private StorageItemRepository storageItemRepository;
 
-        @Mock
-        private UnitConversionService unitConversionService;
+    @Mock
+    private UnitConversionService unitConversionService;
 
-        @Mock
-        private StorageExitDetailService storageExitDetailService;
+    @Mock
+    private StorageExitDetailService storageExitDetailService;
 
-        @Mock
-        private StorageBatchRepository storageBatchRepository;
+    @Mock
+    private StorageBatchRepository storageBatchRepository;
 
-        @InjectMocks
-        private StorageExitService storageExitService;
+    @InjectMocks
+    private StorageExitService storageExitService;
 
-        @BeforeEach
-        void setUp() {
-                SecurityContextHolder.getContext().setAuthentication(
-                        new UsernamePasswordAuthenticationToken(
-                                AUTHENTICATED_EMAIL,
-                                null,
-                                List.of()
-                        )
-                );
-        }
-
-        @AfterEach
-        void tearDown() {
-                SecurityContextHolder.clearContext();
-        }
-
-        private Storage mockOwnedStorage(Storage storage) {
-                when(storageRepository.findByIdAndOwner_EmailIgnoreCase(
-                        storage.getId(),
-                        AUTHENTICATED_EMAIL
-                )).thenReturn(Optional.of(storage));
-
-                when(storageRepository.findByIdForUpdate(storage.getId()))
-                        .thenReturn(Optional.of(storage));
-
-                return storage;
-        }
-
-        private void mockBatchOwnedByUser(Long batchId) {
-                when(storageBatchRepository
-                        .existsByIdAndStorageEntryDetail_StorageEntry_Storage_Owner_EmailIgnoreCase(
-                                batchId,
-                                AUTHENTICATED_EMAIL
-                        )).thenReturn(true);
-        }
-
-        private StorageBatch createBatch(
-                Storage storage,
-                Food food,
-                BigDecimal quantity) {
-
-                StorageEntry entry = new StorageEntry();
-                entry.setStorage(storage);
-
-                StorageEntryDetail entryDetail = new StorageEntryDetail();
-                entryDetail.setStorageEntry(entry);
-                entryDetail.setFood(food);
-
-                StorageBatch batch = new StorageBatch();
-                batch.setId(10L);
-                batch.setStorageEntryDetail(entryDetail);
-                batch.setInitialQuantity(quantity);
-                batch.setAvailableQuantity(quantity);
-                batch.setActive(true);
-
-                return batch;
-        }
-
-        private StorageExitDetail createExitDetail(
-                Food food,
-                StorageExitDetailRequest request,
-                StorageExit exit) {
-
-                StorageExitDetail detail = new StorageExitDetail();
-                detail.setFood(food);
-                detail.setCantidad(request.cantidad());
-                detail.setSelectedUnit(request.selectedUnit());
-                detail.setStorageExit(exit);
-
-                return detail;
-        }
-
-        @Test
-        void shouldFindAllExtractions() {
-                StorageExit extraction = new StorageExit();
-                extraction.setStorageExitId(1L);
-
-                Pageable pageable = PageRequest.of(0, 10);
-
-                Page<StorageExit> expectedPage =
-                        new PageImpl<>(List.of(extraction), pageable, 1);
-
-                when(storageExitRepository.findAllByStorage_Owner_EmailIgnoreCase(
+    @BeforeEach
+    void setUp() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
                         AUTHENTICATED_EMAIL,
-                        pageable
-                )).thenReturn(expectedPage);
+                        null,
+                        List.of()));
+    }
 
-                Page<StorageExit> result =
-                        storageExitService.getAllStorageExits(pageable);
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
-                assertEquals(expectedPage, result);
-                assertEquals(1, result.getTotalElements());
-                assertEquals(1, result.getContent().size());
+    private Storage mockOwnedStorage(Storage storage) {
+        when(storageRepository.findByIdAndOwner_EmailIgnoreCase(
+                storage.getId(),
+                AUTHENTICATED_EMAIL)).thenReturn(Optional.of(storage));
 
-                verify(storageExitRepository)
-                        .findAllByStorage_Owner_EmailIgnoreCase(
-                                AUTHENTICATED_EMAIL,
-                                pageable
-                        );
-        }
+        when(storageRepository.findByIdForUpdate(storage.getId()))
+                .thenReturn(Optional.of(storage));
 
-        @Test
-        void shouldFindExtractionById() {
-                StorageExit expectedExtraction = new StorageExit();
-                expectedExtraction.setStorageExitId(1L);
+        return storage;
+    }
 
-                when(storageExitRepository
-                        .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
-                                1L,
-                                AUTHENTICATED_EMAIL
-                        )).thenReturn(Optional.of(expectedExtraction));
+    private void mockBatchOwnedByUser(Long batchId) {
+        when(storageBatchRepository
+                .existsByIdAndStorageEntryDetail_StorageEntry_Storage_Owner_EmailIgnoreCase(
+                        batchId,
+                        AUTHENTICATED_EMAIL))
+                .thenReturn(true);
+    }
 
-                StorageExit result =
-                        storageExitService.getStorageExitById(1L);
+    private StorageBatch createBatch(
+            Storage storage,
+            Food food,
+            BigDecimal quantity) {
 
-                assertEquals(expectedExtraction, result);
+        StorageEntry entry = new StorageEntry();
+        entry.setStorage(storage);
 
-                verify(storageExitRepository)
-                        .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
-                                1L,
-                                AUTHENTICATED_EMAIL
-                        );
-        }
+        StorageEntryDetail entryDetail = new StorageEntryDetail();
+        entryDetail.setStorageEntry(entry);
+        entryDetail.setFood(food);
 
-        @Test
-        void shouldThrowNotFoundExceptionWhenExtractionDoesNotExist() {
-                when(storageExitRepository
-                        .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
-                                99L,
-                                AUTHENTICATED_EMAIL
-                        )).thenReturn(Optional.empty());
+        StorageBatch batch = new StorageBatch();
+        batch.setId(10L);
+        batch.setStorageEntryDetail(entryDetail);
+        batch.setInitialQuantity(quantity);
+        batch.setAvailableQuantity(quantity);
+        batch.setActive(true);
 
-                assertThrows(
-                        NotFoundException.class,
-                        () -> storageExitService.getStorageExitById(99L)
-                );
+        return batch;
+    }
 
-                verify(storageExitRepository)
-                        .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
-                                99L,
-                                AUTHENTICATED_EMAIL
-                        );
-        }
+    private StorageExitDetail createExitDetail(
+            Food food,
+            StorageExitDetailRequest request,
+            StorageExit exit) {
 
-        @Test
-        void shouldCreateStorageExitAndSubtractStock() {
-                Storage storage = new Storage();
-                storage.setId(1L);
-                mockOwnedStorage(storage);
+        StorageExitDetail detail = new StorageExitDetail();
+        detail.setFood(food);
+        detail.setCantidad(request.cantidad());
+        detail.setSelectedUnit(request.selectedUnit());
+        detail.setStorageExit(exit);
 
-                Food food = new Food();
-                food.setFoodId(1L);
-                food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
+        return detail;
+    }
 
-                StorageItem storageItem = new StorageItem();
-                storageItem.setStorage(storage);
-                storageItem.setFood(food);
-                storageItem.setCantidad(new BigDecimal("5"));
+    @Test
+    void shouldFindAllExtractions() {
+        StorageExit extraction = new StorageExit();
+        extraction.setStorageExitId(1L);
 
-                StorageBatch batch = createBatch(
-                        storage,
-                        food,
-                        new BigDecimal("5")
-                );
+        Pageable pageable = PageRequest.of(0, 10);
 
-                when(foodService.getActiveFoodById(1L))
-                        .thenReturn(food);
+        Page<StorageExit> expectedPage = new PageImpl<>(List.of(extraction), pageable, 1);
 
-                when(storageBatchRepository.findByIdForUpdate(10L))
-                        .thenReturn(Optional.of(batch));
+        when(storageExitRepository.findAllByStorage_Owner_EmailIgnoreCase(
+                AUTHENTICATED_EMAIL,
+                pageable)).thenReturn(expectedPage);
 
-                mockBatchOwnedByUser(10L);
+        Page<StorageExit> result = storageExitService.getAllStorageExits(pageable);
 
-                when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
+        assertEquals(expectedPage, result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.getContent().size());
+
+        verify(storageExitRepository)
+                .findAllByStorage_Owner_EmailIgnoreCase(
+                        AUTHENTICATED_EMAIL,
+                        pageable);
+    }
+
+    @Test
+    void shouldFindExtractionById() {
+        StorageExit expectedExtraction = new StorageExit();
+        expectedExtraction.setStorageExitId(1L);
+
+        when(storageExitRepository
+                .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
                         1L,
-                        1L
-                )).thenReturn(Optional.of(storageItem));
+                        AUTHENTICATED_EMAIL))
+                .thenReturn(Optional.of(expectedExtraction));
 
-                when(unitConversionService.toInventoryUnit(
-                        new BigDecimal("2"),
-                        UnitOfMeasure.UNIT
-                )).thenReturn(new BigDecimal("2"));
+        StorageExit result = storageExitService.getStorageExitById(1L);
 
-                StorageExitDetailRequest detailRequest =
-                        new StorageExitDetailRequest(
-                                1L,
-                                10L,
-                                UnitOfMeasure.UNIT,
-                                new BigDecimal("2")
-                        );
+        assertEquals(expectedExtraction, result);
 
-                when(storageExitDetailService.buildExitDetail(
-                        eq(food),
-                        eq(detailRequest),
-                        any(StorageExit.class)
-                )).thenAnswer(invocation -> createExitDetail(
-                        invocation.getArgument(0),
-                        invocation.getArgument(1),
-                        invocation.getArgument(2)
-                ));
-
-                when(storageExitRepository.save(any(StorageExit.class)))
-                        .thenAnswer(invocation -> invocation.getArgument(0));
-
-                StorageExitRequest request = new StorageExitRequest(
-                        LocalDateTime.now(),
+        verify(storageExitRepository)
+                .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
                         1L,
-                        List.of(detailRequest)
-                );
-
-                StorageExit result =
-                        storageExitService.createStorageExit(request);
-
-                assertNotNull(result);
-                assertEquals(1, result.getDetails().size());
-
-                assertEquals(
-                        0,
-                        new BigDecimal("3").compareTo(storageItem.getCantidad()),
-                        "El stock agregado debe quedar en 3"
-                );
-
-                assertEquals(
-                        0,
-                        new BigDecimal("3").compareTo(batch.getAvailableQuantity()),
-                        "El stock disponible del lote debe quedar en 3"
-                );
-
-                assertTrue(batch.isActive());
-
-                StorageExitDetail savedDetail = result.getDetails().get(0);
-                assertSame(batch, savedDetail.getStorageBatch());
-
-                verify(storageBatchRepository).save(batch);
-                verify(storageItemRepository).save(storageItem);
-                verify(storageExitRepository).save(any(StorageExit.class));
-        }
-
-
-        @Test
-        void shouldDeactivateBatchAndDeleteStorageItemWhenStockIsExhausted() {
-                Storage storage = new Storage();
-                storage.setId(1L);
-                mockOwnedStorage(storage);
-
-                Food food = new Food();
-                food.setFoodId(1L);
-                food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
-
-                StorageItem storageItem = new StorageItem();
-                storageItem.setStorage(storage);
-                storageItem.setFood(food);
-                storageItem.setCantidad(new BigDecimal("5"));
-
-                StorageBatch batch = createBatch(
-                        storage,
-                        food,
-                        new BigDecimal("5")
-                );
-
-                when(foodService.getActiveFoodById(1L))
-                        .thenReturn(food);
-
-                when(storageBatchRepository.findByIdForUpdate(10L))
-                        .thenReturn(Optional.of(batch));
-
-                mockBatchOwnedByUser(10L);
-
-                when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
-                        1L,
-                        1L
-                )).thenReturn(Optional.of(storageItem));
-
-                when(unitConversionService.toInventoryUnit(
-                        new BigDecimal("5"),
-                        UnitOfMeasure.UNIT
-                )).thenReturn(new BigDecimal("5"));
-
-                StorageExitDetailRequest detailRequest =
-                        new StorageExitDetailRequest(
-                                1L,
-                                10L,
-                                UnitOfMeasure.UNIT,
-                                new BigDecimal("5")
-                        );
-
-                when(storageExitDetailService.buildExitDetail(
-                        eq(food),
-                        eq(detailRequest),
-                        any(StorageExit.class)
-                )).thenAnswer(invocation -> createExitDetail(
-                        invocation.getArgument(0),
-                        invocation.getArgument(1),
-                        invocation.getArgument(2)
-                ));
-
-                when(storageExitRepository.save(any(StorageExit.class)))
-                        .thenAnswer(invocation -> invocation.getArgument(0));
-
-                StorageExitRequest request = new StorageExitRequest(
-                        LocalDateTime.now(),
-                        1L,
-                        List.of(detailRequest)
-                );
-
-                StorageExit result =
-                        storageExitService.createStorageExit(request);
-
-                assertNotNull(result);
-                assertEquals(1, result.getDetails().size());
-
-                assertEquals(
-                        0,
-                        BigDecimal.ZERO.compareTo(batch.getAvailableQuantity()),
-                        "El lote debe quedar con cantidad cero"
-                );
-
-                assertFalse(
-                        batch.isActive(),
-                        "El lote debe quedar inactivo al agotarse"
-                );
-
-                verify(storageBatchRepository).save(batch);
-                verify(storageItemRepository).delete(storageItem);
-                verify(storageItemRepository, never()).save(storageItem);
-                verify(storageExitRepository).save(any(StorageExit.class));
-        }
-
-
-        @Test
-        void shouldThrowExceptionWhenStockIsInsufficient() {
-                Storage storage = new Storage();
-                storage.setId(1L);
-                mockOwnedStorage(storage);
-
-                Food food = new Food();
-                food.setFoodId(1L);
-                food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
-
-                StorageItem storageItem = new StorageItem();
-                storageItem.setStorage(storage);
-                storageItem.setFood(food);
-                storageItem.setCantidad(new BigDecimal("5"));
-
-                StorageBatch batch = createBatch(
-                        storage,
-                        food,
-                        new BigDecimal("5")
-                );
-
-                when(foodService.getActiveFoodById(1L))
-                        .thenReturn(food);
-
-                when(storageBatchRepository.findByIdForUpdate(10L))
-                        .thenReturn(Optional.of(batch));
-
-                mockBatchOwnedByUser(10L);
-
-                when(unitConversionService.toInventoryUnit(
-                        new BigDecimal("6"),
-                        UnitOfMeasure.UNIT
-                )).thenReturn(new BigDecimal("6"));
-
-                StorageExitDetailRequest detailRequest =
-                        new StorageExitDetailRequest(
-                                1L,
-                                10L,
-                                UnitOfMeasure.UNIT,
-                                new BigDecimal("6")
-                        );
-
-                when(storageExitDetailService.buildExitDetail(
-                        eq(food),
-                        eq(detailRequest),
-                        any(StorageExit.class)
-                )).thenAnswer(invocation -> createExitDetail(
-                        invocation.getArgument(0),
-                        invocation.getArgument(1),
-                        invocation.getArgument(2)
-                ));
-
-                StorageExitRequest request = new StorageExitRequest(
-                        LocalDateTime.now(),
-                        1L,
-                        List.of(detailRequest)
-                );
-
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () -> storageExitService.createStorageExit(request)
-                );
-
-                assertEquals(
-                        0,
-                        new BigDecimal("5").compareTo(batch.getAvailableQuantity())
-                );
-
-                verify(storageItemRepository, never())
-                        .save(any(StorageItem.class));
-
-                verify(storageBatchRepository, never())
-                        .save(any(StorageBatch.class));
-
-                verify(storageExitRepository, never())
-                        .save(any(StorageExit.class));
-        }
-
-        @Test
-        void shouldThrowExceptionWhenStorageItemDoesNotExist() {
-                Storage storage = new Storage();
-                storage.setId(1L);
-                mockOwnedStorage(storage);
-
-                Food food = new Food();
-                food.setFoodId(1L);
-                food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
-
-                StorageBatch batch = createBatch(
-                        storage,
-                        food,
-                        new BigDecimal("5")
-                );
-
-                when(foodService.getActiveFoodById(1L))
-                        .thenReturn(food);
-
-                when(storageBatchRepository.findByIdForUpdate(10L))
-                        .thenReturn(Optional.of(batch));
-
-                mockBatchOwnedByUser(10L);
-
-                when(unitConversionService.toInventoryUnit(
-                        new BigDecimal("2"),
-                        UnitOfMeasure.UNIT
-                )).thenReturn(new BigDecimal("2"));
-
-                when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
-                        1L,
-                        1L
-                )).thenReturn(Optional.empty());
-
-                StorageExitDetailRequest detailRequest =
-                        new StorageExitDetailRequest(
-                                1L,
-                                10L,
-                                UnitOfMeasure.UNIT,
-                                new BigDecimal("2")
-                        );
-
-                when(storageExitDetailService.buildExitDetail(
-                        eq(food),
-                        eq(detailRequest),
-                        any(StorageExit.class)
-                )).thenAnswer(invocation -> createExitDetail(
-                        invocation.getArgument(0),
-                        invocation.getArgument(1),
-                        invocation.getArgument(2)
-                ));
-
-                StorageExitRequest request = new StorageExitRequest(
-                        LocalDateTime.now(),
-                        1L,
-                        List.of(detailRequest)
-                );
-
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () -> storageExitService.createStorageExit(request)
-                );
-
-                verify(storageItemRepository, never())
-                        .save(any(StorageItem.class));
-
-                verify(storageBatchRepository, never())
-                        .save(any(StorageBatch.class));
-
-                verify(storageExitRepository, never())
-                        .save(any(StorageExit.class));
-        }
-
-        @Test
-        void shouldThrowExceptionWhenUnitIsNotAllowed() {
-                Storage storage = new Storage();
-                storage.setId(1L);
-                mockOwnedStorage(storage);
-
-                Food food = new Food();
-                food.setFoodId(1L);
-                food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
-
-                when(foodService.getActiveFoodById(1L))
-                        .thenReturn(food);
-
-                doThrow(new IllegalArgumentException("Unidad no permitida"))
-                        .when(foodService)
-                        .validateSelectedUnit(food, UnitOfMeasure.KG);
-
-                StorageExitDetailRequest detailRequest =
-                        new StorageExitDetailRequest(
-                                1L,
-                                10L,
-                                UnitOfMeasure.KG,
-                                new BigDecimal("2")
-                        );
-
-                StorageExitRequest request = new StorageExitRequest(
-                        LocalDateTime.now(),
-                        1L,
-                        List.of(detailRequest)
-                );
-
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () -> storageExitService.createStorageExit(request)
-                );
-
-                verify(storageBatchRepository, never())
-                        .findByIdForUpdate(anyLong());
-
-                verify(storageItemRepository, never())
-                        .save(any(StorageItem.class));
-
-                verify(storageExitRepository, never())
-                        .save(any(StorageExit.class));
-        }
-
-        @Test
-        void shouldThrowExceptionWhenFoodIsInactive() {
-                Storage storage = new Storage();
-                storage.setId(1L);
-                mockOwnedStorage(storage);
-
-                when(foodService.getActiveFoodById(1L))
-                        .thenThrow(new IllegalArgumentException(
-                                "No se puede utilizar un alimento inactivo"
-                        ));
-
-                StorageExitDetailRequest detailRequest =
-                        new StorageExitDetailRequest(
-                                1L,
-                                10L,
-                                UnitOfMeasure.UNIT,
-                                new BigDecimal("2")
-                        );
-
-                StorageExitRequest request = new StorageExitRequest(
-                        LocalDateTime.now(),
-                        1L,
-                        List.of(detailRequest)
-                );
-
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () -> storageExitService.createStorageExit(request)
-                );
-
-                verify(storageBatchRepository, never())
-                        .findByIdForUpdate(anyLong());
-
-                verify(storageItemRepository, never())
-                        .save(any(StorageItem.class));
-
-                verify(storageExitRepository, never())
-                        .save(any(StorageExit.class));
-        }
+                        AUTHENTICATED_EMAIL);
+    }
+
+    @Test
+    void shouldThrowNotFoundExceptionWhenExtractionDoesNotExist() {
+        when(storageExitRepository
+                .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
+                        99L,
+                        AUTHENTICATED_EMAIL))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                NotFoundException.class,
+                () -> storageExitService.getStorageExitById(99L));
+
+        verify(storageExitRepository)
+                .findByStorageExitIdAndStorage_Owner_EmailIgnoreCase(
+                        99L,
+                        AUTHENTICATED_EMAIL);
+    }
+
+    @Test
+    void shouldCreateStorageExitAndSubtractStock() {
+        Storage storage = new Storage();
+        storage.setId(1L);
+        mockOwnedStorage(storage);
+
+        Food food = new Food();
+        food.setFoodId(1L);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
+
+        StorageItem storageItem = new StorageItem();
+        storageItem.setStorage(storage);
+        storageItem.setFood(food);
+        storageItem.setCantidad(new BigDecimal("5"));
+
+        StorageBatch batch = createBatch(
+                storage,
+                food,
+                new BigDecimal("5"));
+
+        when(foodService.getActiveFoodById(1L))
+                .thenReturn(food);
+
+        when(storageBatchRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(batch));
+
+        mockBatchOwnedByUser(10L);
+
+        when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
+                1L,
+                1L)).thenReturn(Optional.of(storageItem));
+
+        when(unitConversionService.toInventoryUnit(
+                new BigDecimal("2"),
+                UnitOfMeasure.UNIT)).thenReturn(new BigDecimal("2"));
+
+        StorageExitDetailRequest detailRequest = new StorageExitDetailRequest(
+                1L,
+                10L,
+                UnitOfMeasure.UNIT,
+                new BigDecimal("2"));
+
+        when(storageExitDetailService.buildExitDetail(
+                eq(food),
+                eq(detailRequest),
+                any(StorageExit.class))).thenAnswer(
+                        invocation -> createExitDetail(
+                                invocation.getArgument(0),
+                                invocation.getArgument(1),
+                                invocation.getArgument(2)));
+
+        when(storageExitRepository.save(any(StorageExit.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        StorageExitRequest request = new StorageExitRequest(
+                LocalDateTime.now(),
+                1L,
+                List.of(detailRequest));
+
+        StorageExit result = storageExitService.createStorageExit(request);
+
+        assertNotNull(result);
+        assertEquals(1, result.getDetails().size());
+
+        assertEquals(
+                0,
+                new BigDecimal("3").compareTo(storageItem.getCantidad()),
+                "El stock agregado debe quedar en 3");
+
+        assertEquals(
+                0,
+                new BigDecimal("3").compareTo(batch.getAvailableQuantity()),
+                "El stock disponible del lote debe quedar en 3");
+
+        assertTrue(batch.isActive());
+
+        StorageExitDetail savedDetail = result.getDetails().get(0);
+        assertSame(batch, savedDetail.getStorageBatch());
+
+        verify(storageBatchRepository).save(batch);
+        verify(storageItemRepository).save(storageItem);
+        verify(storageExitRepository).save(any(StorageExit.class));
+    }
+
+    @Test
+    void shouldDeactivateBatchAndDeleteStorageItemWhenStockIsExhausted() {
+        Storage storage = new Storage();
+        storage.setId(1L);
+        mockOwnedStorage(storage);
+
+        Food food = new Food();
+        food.setFoodId(1L);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
+
+        StorageItem storageItem = new StorageItem();
+        storageItem.setStorage(storage);
+        storageItem.setFood(food);
+        storageItem.setCantidad(new BigDecimal("5"));
+
+        StorageBatch batch = createBatch(
+                storage,
+                food,
+                new BigDecimal("5"));
+
+        when(foodService.getActiveFoodById(1L))
+                .thenReturn(food);
+
+        when(storageBatchRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(batch));
+
+        mockBatchOwnedByUser(10L);
+
+        when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
+                1L,
+                1L)).thenReturn(Optional.of(storageItem));
+
+        when(unitConversionService.toInventoryUnit(
+                new BigDecimal("5"),
+                UnitOfMeasure.UNIT)).thenReturn(new BigDecimal("5"));
+
+        StorageExitDetailRequest detailRequest = new StorageExitDetailRequest(
+                1L,
+                10L,
+                UnitOfMeasure.UNIT,
+                new BigDecimal("5"));
+
+        when(storageExitDetailService.buildExitDetail(
+                eq(food),
+                eq(detailRequest),
+                any(StorageExit.class))).thenAnswer(
+                        invocation -> createExitDetail(
+                                invocation.getArgument(0),
+                                invocation.getArgument(1),
+                                invocation.getArgument(2)));
+
+        when(storageExitRepository.save(any(StorageExit.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        StorageExitRequest request = new StorageExitRequest(
+                LocalDateTime.now(),
+                1L,
+                List.of(detailRequest));
+
+        StorageExit result = storageExitService.createStorageExit(request);
+
+        assertNotNull(result);
+        assertEquals(1, result.getDetails().size());
+
+        assertEquals(
+                0,
+                BigDecimal.ZERO.compareTo(batch.getAvailableQuantity()),
+                "El lote debe quedar con cantidad cero");
+
+        assertFalse(
+                batch.isActive(),
+                "El lote debe quedar inactivo al agotarse");
+
+        verify(storageBatchRepository).save(batch);
+        verify(storageItemRepository).delete(storageItem);
+        verify(storageItemRepository, never()).save(storageItem);
+        verify(storageExitRepository).save(any(StorageExit.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenStockIsInsufficient() {
+        Storage storage = new Storage();
+        storage.setId(1L);
+        mockOwnedStorage(storage);
+
+        Food food = new Food();
+        food.setFoodId(1L);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
+
+        StorageItem storageItem = new StorageItem();
+        storageItem.setStorage(storage);
+        storageItem.setFood(food);
+        storageItem.setCantidad(new BigDecimal("5"));
+
+        StorageBatch batch = createBatch(
+                storage,
+                food,
+                new BigDecimal("5"));
+
+        when(foodService.getActiveFoodById(1L))
+                .thenReturn(food);
+
+        when(storageBatchRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(batch));
+
+        mockBatchOwnedByUser(10L);
+
+        when(unitConversionService.toInventoryUnit(
+                new BigDecimal("6"),
+                UnitOfMeasure.UNIT)).thenReturn(new BigDecimal("6"));
+
+        StorageExitDetailRequest detailRequest = new StorageExitDetailRequest(
+                1L,
+                10L,
+                UnitOfMeasure.UNIT,
+                new BigDecimal("6"));
+
+        when(storageExitDetailService.buildExitDetail(
+                eq(food),
+                eq(detailRequest),
+                any(StorageExit.class))).thenAnswer(
+                        invocation -> createExitDetail(
+                                invocation.getArgument(0),
+                                invocation.getArgument(1),
+                                invocation.getArgument(2)));
+
+        StorageExitRequest request = new StorageExitRequest(
+                LocalDateTime.now(),
+                1L,
+                List.of(detailRequest));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> storageExitService.createStorageExit(request));
+
+        assertEquals(
+                0,
+                new BigDecimal("5").compareTo(batch.getAvailableQuantity()));
+
+        verify(storageItemRepository, never())
+                .save(any(StorageItem.class));
+
+        verify(storageBatchRepository, never())
+                .save(any(StorageBatch.class));
+
+        verify(storageExitRepository, never())
+                .save(any(StorageExit.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenStorageItemDoesNotExist() {
+        Storage storage = new Storage();
+        storage.setId(1L);
+        mockOwnedStorage(storage);
+
+        Food food = new Food();
+        food.setFoodId(1L);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
+
+        StorageBatch batch = createBatch(
+                storage,
+                food,
+                new BigDecimal("5"));
+
+        when(foodService.getActiveFoodById(1L))
+                .thenReturn(food);
+
+        when(storageBatchRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(batch));
+
+        mockBatchOwnedByUser(10L);
+
+        when(unitConversionService.toInventoryUnit(
+                new BigDecimal("2"),
+                UnitOfMeasure.UNIT)).thenReturn(new BigDecimal("2"));
+
+        when(storageItemRepository.findByStorageIdAndFoodIdForUpdate(
+                1L,
+                1L)).thenReturn(Optional.empty());
+
+        StorageExitDetailRequest detailRequest = new StorageExitDetailRequest(
+                1L,
+                10L,
+                UnitOfMeasure.UNIT,
+                new BigDecimal("2"));
+
+        when(storageExitDetailService.buildExitDetail(
+                eq(food),
+                eq(detailRequest),
+                any(StorageExit.class))).thenAnswer(
+                        invocation -> createExitDetail(
+                                invocation.getArgument(0),
+                                invocation.getArgument(1),
+                                invocation.getArgument(2)));
+
+        StorageExitRequest request = new StorageExitRequest(
+                LocalDateTime.now(),
+                1L,
+                List.of(detailRequest));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> storageExitService.createStorageExit(request));
+
+        verify(storageItemRepository, never())
+                .save(any(StorageItem.class));
+
+        verify(storageBatchRepository, never())
+                .save(any(StorageBatch.class));
+
+        verify(storageExitRepository, never())
+                .save(any(StorageExit.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUnitIsNotAllowed() {
+        Storage storage = new Storage();
+        storage.setId(1L);
+        mockOwnedStorage(storage);
+
+        Food food = new Food();
+        food.setFoodId(1L);
+        food.setUnitOfMeasures(Set.of(UnitOfMeasure.UNIT));
+
+        when(foodService.getActiveFoodById(1L))
+                .thenReturn(food);
+
+        doThrow(new IllegalArgumentException("Unidad no permitida"))
+                .when(foodService)
+                .validateSelectedUnit(food, UnitOfMeasure.KG);
+
+        StorageExitDetailRequest detailRequest = new StorageExitDetailRequest(
+                1L,
+                10L,
+                UnitOfMeasure.KG,
+                new BigDecimal("2"));
+
+        StorageExitRequest request = new StorageExitRequest(
+                LocalDateTime.now(),
+                1L,
+                List.of(detailRequest));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> storageExitService.createStorageExit(request));
+
+        verify(storageBatchRepository, never())
+                .findByIdForUpdate(anyLong());
+
+        verify(storageItemRepository, never())
+                .save(any(StorageItem.class));
+
+        verify(storageExitRepository, never())
+                .save(any(StorageExit.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenFoodIsInactive() {
+        Storage storage = new Storage();
+        storage.setId(1L);
+        mockOwnedStorage(storage);
+
+        when(foodService.getActiveFoodById(1L))
+                .thenThrow(new IllegalArgumentException(
+                        "No se puede utilizar un alimento inactivo"));
+
+        StorageExitDetailRequest detailRequest = new StorageExitDetailRequest(
+                1L,
+                10L,
+                UnitOfMeasure.UNIT,
+                new BigDecimal("2"));
+
+        StorageExitRequest request = new StorageExitRequest(
+                LocalDateTime.now(),
+                1L,
+                List.of(detailRequest));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> storageExitService.createStorageExit(request));
+
+        verify(storageBatchRepository, never())
+                .findByIdForUpdate(anyLong());
+
+        verify(storageItemRepository, never())
+                .save(any(StorageItem.class));
+
+        verify(storageExitRepository, never())
+                .save(any(StorageExit.class));
+    }
 }

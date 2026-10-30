@@ -45,9 +45,7 @@ class StorageEntryDetailServiceTest {
                 new UsernamePasswordAuthenticationToken(
                         AUTHENTICATED_EMAIL,
                         null,
-                        List.of()
-                )
-        );
+                        List.of()));
     }
 
     @AfterEach
@@ -63,19 +61,16 @@ class StorageEntryDetailServiceTest {
 
         Pageable pageable = PageRequest.of(0, 10);
 
-        Page<StorageEntryDetail> expectedPage =
-                new PageImpl<>(List.of(detail), pageable, 1);
+        Page<StorageEntryDetail> expectedPage = new PageImpl<>(List.of(detail), pageable, 1);
 
         when(storageEntryDetailRepository
                 .findAllByStorageEntry_Storage_Owner_EmailIgnoreCase(
                         AUTHENTICATED_EMAIL,
-                        pageable
-                )).thenReturn(expectedPage);
+                        pageable))
+                .thenReturn(expectedPage);
 
-        Page<StorageEntryDetail> result =
-                storageEntryDetailService.getAllStorageEntriesDetails(
-                        pageable
-                );
+        Page<StorageEntryDetail> result = storageEntryDetailService.getAllStorageEntriesDetails(
+                pageable);
 
         assertEquals(expectedPage, result);
         assertEquals(1, result.getTotalElements());
@@ -84,8 +79,7 @@ class StorageEntryDetailServiceTest {
         verify(storageEntryDetailRepository)
                 .findAllByStorageEntry_Storage_Owner_EmailIgnoreCase(
                         AUTHENTICATED_EMAIL,
-                        pageable
-                );
+                        pageable);
     }
 
     @Test
@@ -97,19 +91,17 @@ class StorageEntryDetailServiceTest {
         when(storageEntryDetailRepository
                 .findByEntryDetailIdAndStorageEntry_Storage_Owner_EmailIgnoreCase(
                         1L,
-                        AUTHENTICATED_EMAIL
-                )).thenReturn(Optional.of(expectedDetail));
+                        AUTHENTICATED_EMAIL))
+                .thenReturn(Optional.of(expectedDetail));
 
-        StorageEntryDetail result =
-                storageEntryDetailService.getStorageEntryDetailById(1L);
+        StorageEntryDetail result = storageEntryDetailService.getStorageEntryDetailById(1L);
 
         assertEquals(expectedDetail, result);
 
         verify(storageEntryDetailRepository)
                 .findByEntryDetailIdAndStorageEntry_Storage_Owner_EmailIgnoreCase(
                         1L,
-                        AUTHENTICATED_EMAIL
-                );
+                        AUTHENTICATED_EMAIL);
     }
 
     @Test
@@ -117,18 +109,16 @@ class StorageEntryDetailServiceTest {
         when(storageEntryDetailRepository
                 .findByEntryDetailIdAndStorageEntry_Storage_Owner_EmailIgnoreCase(
                         99L,
-                        AUTHENTICATED_EMAIL
-                )).thenReturn(Optional.empty());
+                        AUTHENTICATED_EMAIL))
+                .thenReturn(Optional.empty());
 
         org.junit.jupiter.api.Assertions.assertThrows(
                 NotFoundException.class,
-                () -> storageEntryDetailService.getStorageEntryDetailById(99L)
-        );
+                () -> storageEntryDetailService.getStorageEntryDetailById(99L));
 
         verify(storageEntryDetailRepository)
                 .findByEntryDetailIdAndStorageEntry_Storage_Owner_EmailIgnoreCase(
                         99L,
-                        AUTHENTICATED_EMAIL
-                );
+                        AUTHENTICATED_EMAIL);
     }
 }

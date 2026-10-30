@@ -7,12 +7,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.freezermanager.dto.ErrorResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    
+
+    private static final Logger logger =
+        LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(NotFoundException.class)
         public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException e){
             ErrorResponse response = new ErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND.value());
@@ -59,10 +64,19 @@ public class GlobalExceptionHandler {
         }
 
     @ExceptionHandler(RuntimeException.class)
-        public ResponseEntity<ErrorResponse> handleGenericError(RuntimeException e){
-            ErrorResponse response = new ErrorResponse("Se ha producido un error inesperado", HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-                }
+    public ResponseEntity<ErrorResponse> handleGenericError(RuntimeException e) {
+
+        logger.error("Error interno no controlado: ", e);
+
+        ErrorResponse response = new ErrorResponse(
+                "Se ha producido un error inesperado",
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
+    }
 
     @ExceptionHandler(AlreadyExistException.class)
         public ResponseEntity<ErrorResponse> handleAlreadyExist(AlreadyExistException e){

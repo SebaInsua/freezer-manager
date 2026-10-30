@@ -1,6 +1,8 @@
 
 package com.freezermanager.mapper;
 
+import java.util.Set;
+
 import org.springframework.stereotype.Component;
 
 import com.freezermanager.domain.food.Food;
@@ -14,7 +16,7 @@ public class FoodMapper {
             food.getFoodId(),
             food.getName(),
             food.getCategory(),
-            food.getUnitOfMeasures(),
+            Set.copyOf(food.getUnitOfMeasures()),
             food.isActive(),
             food.getDefaultShelfLifeDays(),
             food.getEstimatedWeightPerUnitKg()

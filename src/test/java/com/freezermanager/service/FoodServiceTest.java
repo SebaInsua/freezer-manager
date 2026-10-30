@@ -30,7 +30,9 @@ import com.freezermanager.domain.food.FoodCategory;
 import com.freezermanager.domain.food.UnitOfMeasure;
 import com.freezermanager.domain.user.User;
 import com.freezermanager.dto.FoodRequest;
+import com.freezermanager.dto.response.FoodResponse;
 import com.freezermanager.exception.NotFoundException;
+import com.freezermanager.mapper.FoodMapper;
 import com.freezermanager.repository.FoodRepository;
 import com.freezermanager.repository.UserRepository;
 
@@ -45,6 +47,9 @@ class FoodServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private FoodMapper foodMapper;
 
     @InjectMocks
     private FoodService foodService;
@@ -62,9 +67,7 @@ class FoodServiceTest {
                 new UsernamePasswordAuthenticationToken(
                         USER_EMAIL,
                         "credentials",
-                        List.of()
-                )
-        );
+                        List.of()));
 
         when(userRepository.findByEmailIgnoreCase(USER_EMAIL))
                 .thenReturn(Optional.of(authenticatedUser));
@@ -88,16 +91,21 @@ class FoodServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Food> expectedPage = new PageImpl<>(expectedFoods, pageable, 1);
 
+        FoodResponse expectedResponse = mock(FoodResponse.class);
+
         when(foodRepository.findVisibleFoods(true, USER_ID, pageable))
                 .thenReturn(expectedPage);
 
-        Page<Food> result = foodService.getFoods(null, pageable);
+        when(foodMapper.toResponse(item))
+                .thenReturn(expectedResponse);
 
-        assertEquals(expectedPage, result);
+        Page<FoodResponse> result = foodService.getFoods(null, pageable);
+
         assertEquals(1, result.getTotalElements());
-        assertEquals("Pizza", result.getContent().get(0).getName());
+        assertEquals(expectedResponse, result.getContent().get(0));
 
         verify(foodRepository).findVisibleFoods(true, USER_ID, pageable);
+        verify(foodMapper).toResponse(item);
     }
 
     @Test
@@ -106,13 +114,20 @@ class FoodServiceTest {
         expectedFood.setFoodId(1L);
         expectedFood.setName("Pizza");
 
+        FoodResponse expectedResponse = mock(FoodResponse.class);
+
         when(foodRepository.findVisibleById(1L, USER_ID))
                 .thenReturn(Optional.of(expectedFood));
 
-        Food result = foodService.getFoodById(1L);
+        when(foodMapper.toResponse(expectedFood))
+                .thenReturn(expectedResponse);
 
-        assertEquals(expectedFood, result);
+        FoodResponse result = foodService.getFoodById(1L);
+
+        assertEquals(expectedResponse, result);
+
         verify(foodRepository).findVisibleById(1L, USER_ID);
+        verify(foodMapper).toResponse(expectedFood);
     }
 
     @Test
@@ -122,10 +137,10 @@ class FoodServiceTest {
 
         assertThrows(
                 NotFoundException.class,
-                () -> foodService.getFoodById(99L)
-        );
+                () -> foodService.getFoodById(99L));
 
         verify(foodRepository).findVisibleById(99L, USER_ID);
+        verifyNoInteractions(foodMapper);
     }
 
     @Test
@@ -135,8 +150,7 @@ class FoodServiceTest {
                 FoodCategory.values()[0],
                 Set.of(UnitOfMeasure.KG, UnitOfMeasure.G),
                 null,
-                null
-        );
+                null);
 
         when(foodRepository.existsByNameIgnoreCaseAndOwner_Id(
                 "Harina", USER_ID))
@@ -145,16 +159,21 @@ class FoodServiceTest {
         when(foodRepository.save(any(Food.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Food result = foodService.createFood(request);
+        FoodResponse expectedResponse = mock(FoodResponse.class);
 
-        assertEquals(
-                Set.of(UnitOfMeasure.KG, UnitOfMeasure.G),
-                result.getUnitOfMeasures()
-        );
-        assertEquals(authenticatedUser, result.getOwner());
-        assertTrue(result.isActive());
+        when(foodMapper.toResponse(any(Food.class)))
+                .thenReturn(expectedResponse);
 
-        verify(foodRepository).save(any(Food.class));
+        FoodResponse result = foodService.createFood(request);
+
+        assertEquals(expectedResponse, result);
+
+        verify(foodRepository).save(argThat(food -> food.getUnitOfMeasures().equals(
+                Set.of(UnitOfMeasure.KG, UnitOfMeasure.G))
+                && food.getOwner().equals(authenticatedUser)
+                && food.isActive()));
+
+        verify(foodMapper).toResponse(any(Food.class));
     }
 
     @Test
@@ -164,8 +183,7 @@ class FoodServiceTest {
                 FoodCategory.values()[0],
                 Set.of(UnitOfMeasure.KG, UnitOfMeasure.UNIT),
                 null,
-                null
-        );
+                null);
 
         when(foodRepository.existsByNameIgnoreCaseAndOwner_Id(
                 "Harina", USER_ID))
@@ -173,10 +191,10 @@ class FoodServiceTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> foodService.createFood(request)
-        );
+                () -> foodService.createFood(request));
 
         verify(foodRepository, never()).save(any(Food.class));
+        verifyNoInteractions(foodMapper);
     }
 
     @Test
@@ -188,8 +206,7 @@ class FoodServiceTest {
                 FoodCategory.values()[0],
                 Set.of(UnitOfMeasure.UNIT),
                 null,
-                estimatedWeight
-        );
+                estimatedWeight);
 
         when(foodRepository.existsByNameIgnoreCaseAndOwner_Id(
                 "Hamburguesa", USER_ID))
@@ -198,12 +215,19 @@ class FoodServiceTest {
         when(foodRepository.save(any(Food.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Food result = foodService.createFood(request);
+        FoodResponse expectedResponse = mock(FoodResponse.class);
 
-        assertEquals(estimatedWeight, result.getEstimatedWeightPerUnitKg());
-        assertEquals(authenticatedUser, result.getOwner());
+        when(foodMapper.toResponse(any(Food.class)))
+                .thenReturn(expectedResponse);
 
-        verify(foodRepository).save(any(Food.class));
+        FoodResponse result = foodService.createFood(request);
+
+        assertEquals(expectedResponse, result);
+
+        verify(foodRepository).save(argThat(food -> estimatedWeight.equals(food.getEstimatedWeightPerUnitKg())
+                && food.getOwner().equals(authenticatedUser)));
+
+        verify(foodMapper).toResponse(any(Food.class));
     }
 
     @Test
@@ -230,8 +254,7 @@ class FoodServiceTest {
                 FoodCategory.values()[0],
                 Set.of(UnitOfMeasure.UNIT),
                 null,
-                estimatedWeight
-        );
+                estimatedWeight);
 
         Food result = foodService.updateFoods(request, 1L);
 

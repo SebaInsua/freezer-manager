@@ -1,3 +1,4 @@
+
 package com.freezermanager.controller;
 
 import org.springframework.data.domain.Page;
@@ -29,12 +30,14 @@ import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/foods")
+@SecurityRequirement(name = "bearerAuth")
 public class FoodController {
 
     private final FoodService foodService;
@@ -45,7 +48,10 @@ public class FoodController {
         description = "Obtiene los alimentos. Permite filtrar por estado activo."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista de alimentos obtenida correctamente"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "Lista de alimentos obtenida correctamente"
+        ),
         @ApiResponse(
             responseCode = "500",
             description = "Error interno del servidor",
@@ -68,11 +74,7 @@ public class FoodController {
             direction = Sort.Direction.ASC
         ) Pageable pageable
     ) {
-        Page<FoodResponse> response = foodService
-            .getFoods(active, pageable)
-            .map(foodMapper::toResponse);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(foodService.getFoods(active, pageable));
     }
 
     @Operation(
@@ -80,7 +82,10 @@ public class FoodController {
         description = "Busca un alimento por su identificador."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Alimento encontrado"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "Alimento encontrado"
+        ),
         @ApiResponse(
             responseCode = "404",
             description = "No existe un alimento con ese identificador",
@@ -100,8 +105,7 @@ public class FoodController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<FoodResponse> getFood(@PathVariable Long id) {
-        Food food = foodService.getFoodById(id);
-        return ResponseEntity.ok(foodMapper.toResponse(food));
+        return ResponseEntity.ok(foodService.getFoodById(id));
     }
 
     @Operation(
@@ -109,7 +113,10 @@ public class FoodController {
         description = "Registra un nuevo alimento con su categoría y unidades de medida."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Alimento creado correctamente"),
+        @ApiResponse(
+            responseCode = "201",
+            description = "Alimento creado correctamente"
+        ),
         @ApiResponse(
             responseCode = "400",
             description = "Los datos enviados no son válidos",
@@ -139,11 +146,9 @@ public class FoodController {
     public ResponseEntity<FoodResponse> createFood(
         @Valid @RequestBody FoodRequest request
     ) {
-        Food food = foodService.createFood(request);
-
         return ResponseEntity
             .status(HttpStatus.CREATED)
-            .body(foodMapper.toResponse(food));
+            .body(foodService.createFood(request));
     }
 
     @Operation(
@@ -151,7 +156,10 @@ public class FoodController {
         description = "Actualiza el nombre, la categoría y las unidades de medida de un alimento existente."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Alimento actualizado correctamente"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "Alimento actualizado correctamente"
+        ),
         @ApiResponse(
             responseCode = "400",
             description = "Los datos enviados no son válidos",
@@ -199,7 +207,10 @@ public class FoodController {
         description = "Desactiva un alimento existente sin eliminarlo."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Alimento desactivado correctamente"),
+        @ApiResponse(
+            responseCode = "204",
+            description = "Alimento desactivado correctamente"
+        ),
         @ApiResponse(
             responseCode = "404",
             description = "No existe un alimento con ese identificador",
