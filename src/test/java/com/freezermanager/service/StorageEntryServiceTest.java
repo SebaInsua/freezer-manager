@@ -159,8 +159,7 @@ class StorageEntryServiceTest {
 
     @Test
     void shouldCreateBatchWhenStorageEntryIsCreated() {
-        Storage storage = mockOwnedStorage(1L);
-
+        mockOwnedStorage(1L);
         Food food = new Food();
         food.setFoodId(5L);
 

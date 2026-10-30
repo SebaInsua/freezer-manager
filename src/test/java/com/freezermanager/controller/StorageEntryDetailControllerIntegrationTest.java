@@ -76,7 +76,7 @@ class StorageEntryDetailControllerIntegrationTest {
     @Test
     void shouldReturnEmptyPageWhenNoDetailsExist() throws Exception {
         mockMvc.perform(get("/api/v1/storage-entrydetail")
-                        .header("Authorization", authorizationHeader))
+                .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(0)))
                 .andExpect(jsonPath("$.totalElements").value(0))
@@ -90,9 +90,9 @@ class StorageEntryDetailControllerIntegrationTest {
         createEntryWithDetail("Pollo", BigDecimal.valueOf(3));
 
         mockMvc.perform(get("/api/v1/storage-entrydetail")
-                        .header("Authorization", authorizationHeader)
-                        .param("page", "0")
-                        .param("size", "10"))
+                .header("Authorization", authorizationHeader)
+                .param("page", "0")
+                .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.totalElements").value(2))
@@ -106,10 +106,10 @@ class StorageEntryDetailControllerIntegrationTest {
         createEntryWithDetail("Carne", BigDecimal.valueOf(4));
 
         mockMvc.perform(get("/api/v1/storage-entrydetail")
-                        .header("Authorization", authorizationHeader)
-                        .param("page", "1")
-                        .param("size", "2")
-                        .param("sort", "entryDetailId,asc"))
+                .header("Authorization", authorizationHeader)
+                .param("page", "1")
+                .param("size", "2")
+                .param("sort", "entryDetailId,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.totalElements").value(3))
@@ -128,10 +128,10 @@ class StorageEntryDetailControllerIntegrationTest {
         Long secondId = details.get(1).getEntryDetailId();
 
         mockMvc.perform(get("/api/v1/storage-entrydetail")
-                        .header("Authorization", authorizationHeader)
-                        .param("page", "0")
-                        .param("size", "10")
-                        .param("sort", "entryDetailId,desc"))
+                .header("Authorization", authorizationHeader)
+                .param("page", "0")
+                .param("size", "10")
+                .param("sort", "entryDetailId,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].entryDetailId").value(secondId))

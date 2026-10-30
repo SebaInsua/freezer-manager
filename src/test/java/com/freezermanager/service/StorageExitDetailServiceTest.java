@@ -30,13 +30,11 @@ class StorageExitDetailServiceTest {
         StorageExit exit = new StorageExit();
 
         StorageExitDetailRequest request = new StorageExitDetailRequest(
-            1L,
-            10L,
-            UnitOfMeasure.UNIT,
-            new BigDecimal("2")
-        );
-        StorageExitDetail result =
-            storageExitDetailService.buildExitDetail(food, request, exit);
+                1L,
+                10L,
+                UnitOfMeasure.UNIT,
+                new BigDecimal("2"));
+        StorageExitDetail result = storageExitDetailService.buildExitDetail(food, request, exit);
 
         assertSame(food, result.getFood());
         assertEquals(new BigDecimal("2"), result.getCantidad());

@@ -4,7 +4,6 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -64,13 +63,13 @@ public class StorageEntryControllerIntegrationTest {
         authorizationHeader = "Bearer " + jwtService.generateToken(testUser.getEmail());
     }
 
-    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
-            authenticatedGet(String url, Object... uriVariables) {
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authenticatedGet(String url,
+            Object... uriVariables) {
         return get(url, uriVariables).header("Authorization", authorizationHeader);
     }
 
-    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
-            authenticatedPost(String url, Object... uriVariables) {
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authenticatedPost(String url,
+            Object... uriVariables) {
         return post(url, uriVariables).header("Authorization", authorizationHeader);
     }
 
@@ -141,8 +140,7 @@ public class StorageEntryControllerIntegrationTest {
         mockMvc.perform(
                 authenticatedGet(
                         "/api/v1/storagesentry/{id}",
-                        entryGuardado.getStorageEntryId()
-                ))
+                        entryGuardado.getStorageEntryId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$..password").doesNotExist())
                 .andExpect(jsonPath("$.storageEntryId")
@@ -155,7 +153,7 @@ public class StorageEntryControllerIntegrationTest {
     }
 
     @Test
-    public void testIntegrationWhenStoragesEntriesDoesntExists() throws Exception{
+    public void testIntegrationWhenStoragesEntriesDoesntExists() throws Exception {
         Storage storage = new Storage();
         storage.setCapacidadLitros(BigDecimal.valueOf(120));
         storage.setOwner(testUser);
@@ -163,14 +161,14 @@ public class StorageEntryControllerIntegrationTest {
 
         StorageEntry entryGuardado = createEntryWithDetail(storage, "Pescado");
 
-        Long idInexistente = entryGuardado.getStorageEntryId()+1;
-        while(storageEntryRepository.existsById(idInexistente)){
+        Long idInexistente = entryGuardado.getStorageEntryId() + 1;
+        while (storageEntryRepository.existsById(idInexistente)) {
             idInexistente += 1;
         }
 
         String messageExpected = "No existe un registro de ingreso con el ID: " + idInexistente;
 
-        mockMvc.perform(authenticatedGet("/api/v1/storagesentry/{id}",idInexistente))
+        mockMvc.perform(authenticatedGet("/api/v1/storagesentry/{id}", idInexistente))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value(messageExpected))
                 .andExpect(jsonPath("$.status").value(404));
@@ -188,8 +186,7 @@ public class StorageEntryControllerIntegrationTest {
         mockMvc.perform(
                 authenticatedGet(
                         "/api/v1/storagesentry/{id}/details",
-                        entryGuardado.getStorageEntryId()
-                ))
+                        entryGuardado.getStorageEntryId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$..password").doesNotExist())
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -229,8 +226,8 @@ public class StorageEntryControllerIntegrationTest {
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
-                        .contentType("application/json")
-                        .content(requestBody))
+                .contentType("application/json")
+                .content(requestBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$..password").doesNotExist())
                 .andExpect(jsonPath("$.storage.owner").doesNotExist())
@@ -304,8 +301,8 @@ public class StorageEntryControllerIntegrationTest {
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
-                        .contentType("application/json")
-                        .content(requestBody))
+                .contentType("application/json")
+                .content(requestBody))
                 .andExpect(status().isCreated());
 
         List<StorageBatch> batches = storageBatchRepository.findAll();
@@ -344,8 +341,8 @@ public class StorageEntryControllerIntegrationTest {
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
-                        .contentType("application/json")
-                        .content(requestBody))
+                .contentType("application/json")
+                .content(requestBody))
                 .andExpect(status().isCreated());
 
         List<StorageBatch> batches = storageBatchRepository.findAll();
@@ -389,8 +386,8 @@ public class StorageEntryControllerIntegrationTest {
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
-                        .contentType("application/json")
-                        .content(requestBody))
+                .contentType("application/json")
+                .content(requestBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.details", hasSize(1)))
                 .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(3)));
@@ -437,8 +434,8 @@ public class StorageEntryControllerIntegrationTest {
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
-                        .contentType("application/json")
-                        .content(requestBody))
+                .contentType("application/json")
+                .content(requestBody))
                 .andExpect(status().isBadRequest());
 
         StorageItem unchangedItem = storageItemRepository
@@ -484,8 +481,8 @@ public class StorageEntryControllerIntegrationTest {
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
-                        .contentType("application/json")
-                        .content(requestBody))
+                .contentType("application/json")
+                .content(requestBody))
                 .andExpect(status().isBadRequest());
 
         org.junit.jupiter.api.Assertions.assertEquals(
@@ -497,7 +494,7 @@ public class StorageEntryControllerIntegrationTest {
                                 savedStorage.getId(), savedFood.getFoodId())
                         .isEmpty());
     }
-    
+
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @Test
     public void testIntegrationInactiveFoodRollsBackEntireStorageEntry() throws Exception {
@@ -536,25 +533,24 @@ public class StorageEntryControllerIntegrationTest {
                     ]
                 }
                 """.formatted(
-                        savedStorage.getId(),
-                        savedActiveFood.getFoodId(),
-                        savedInactiveFood.getFoodId());
+                savedStorage.getId(),
+                savedActiveFood.getFoodId(),
+                savedInactiveFood.getFoodId());
 
         long batchesBefore = storageBatchRepository.count();
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
-                        .contentType("application/json")
-                        .content(requestBody))
+                .contentType("application/json")
+                .content(requestBody))
                 .andExpect(status().isBadRequest());
 
         org.junit.jupiter.api.Assertions.assertEquals(
                 0, storageEntryRepository.count());
 
         assertEquals(
-            batchesBefore,
-            storageBatchRepository.count(),
-            "No deben persistirse lotes si la entrada completa se revierte"
-        );
+                batchesBefore,
+                storageBatchRepository.count(),
+                "No deben persistirse lotes si la entrada completa se revierte");
 
         org.junit.jupiter.api.Assertions.assertTrue(
                 storageItemRepository.findByStorageIdAndFoodId(
@@ -562,23 +558,23 @@ public class StorageEntryControllerIntegrationTest {
                         .isEmpty());
 
         org.junit.jupiter.api.Assertions.assertTrue(
-        storageItemRepository.findByStorageIdAndFoodId(
-                savedStorage.getId(), savedInactiveFood.getFoodId()).isEmpty());
+                storageItemRepository.findByStorageIdAndFoodId(
+                        savedStorage.getId(), savedInactiveFood.getFoodId()).isEmpty());
         storageItemRepository.findByStorageIdAndFoodId(
                 savedStorage.getId(),
                 savedActiveFood.getFoodId())
-        .ifPresent(storageItemRepository::delete);
+                .ifPresent(storageItemRepository::delete);
 
         storageItemRepository.findByStorageIdAndFoodId(
-                        savedStorage.getId(),
-                        savedInactiveFood.getFoodId())
+                savedStorage.getId(),
+                savedInactiveFood.getFoodId())
                 .ifPresent(storageItemRepository::delete);
         foodRepository.delete(savedActiveFood);
         foodRepository.delete(savedInactiveFood);
         storageRepository.delete(savedStorage);
     }
 
-        private StorageEntry createEntryWithDetail(Storage storage, String foodName) {
+    private StorageEntry createEntryWithDetail(Storage storage, String foodName) {
         Food food = new Food();
         food.setName(foodName);
         food.setUnitOfMeasures(Set.of(UnitOfMeasure.KG));
@@ -599,7 +595,6 @@ public class StorageEntryControllerIntegrationTest {
 
         return storageEntryRepository.save(entry);
     }
-
 
     @Test
     public void testIntegrationCreateStorageEntryWithDifferentWeightUnits() throws Exception {
@@ -628,8 +623,8 @@ public class StorageEntryControllerIntegrationTest {
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
-                        .contentType("application/json")
-                        .content(firstRequestBody))
+                .contentType("application/json")
+                .content(firstRequestBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(2)))
                 .andExpect(jsonPath("$.details[0].selectedUnit").value("KG"));
@@ -649,8 +644,8 @@ public class StorageEntryControllerIntegrationTest {
                 """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
-                        .contentType("application/json")
-                        .content(secondRequestBody))
+                .contentType("application/json")
+                .content(secondRequestBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.details[0].cantidad", comparesEqualTo(500)))
                 .andExpect(jsonPath("$.details[0].selectedUnit").value("G"));
@@ -677,31 +672,31 @@ public class StorageEntryControllerIntegrationTest {
         Food savedFood = foodRepository.save(food);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-23T12:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "selectedUnit": "KG",
-                        "cantidad": 0
-                    }
-                ]
-            }
-            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+                {
+                    "movementDateTime": "2026-10-23T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": 0
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                 .contentType("application/json")
                 .content(requestBody))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
 
         assertEquals(0, storageEntryRepository.count());
 
         assertTrue(storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .isEmpty());
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .isEmpty());
     }
 
     @Test
@@ -717,31 +712,31 @@ public class StorageEntryControllerIntegrationTest {
         Food savedFood = foodRepository.save(food);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-23T12:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "selectedUnit": "KG",
-                        "cantidad": -1
-                    }
-                ]
-            }
-            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+                {
+                    "movementDateTime": "2026-10-23T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": -1
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                 .contentType("application/json")
                 .content(requestBody))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
 
         assertEquals(0, storageEntryRepository.count());
 
         assertTrue(storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .isEmpty());
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .isEmpty());
     }
 
     @Test
@@ -757,33 +752,32 @@ public class StorageEntryControllerIntegrationTest {
         Food savedFood = foodRepository.save(food);
 
         String requestBody = """
-            {
-                "movementDateTime": "2026-10-23T12:00:00",
-                "storageId": %d,
-                "details": [
-                    {
-                        "foodId": %d,
-                        "selectedUnit": "KG",
-                        "cantidad": null
-                    }
-                ]
-            }
-            """.formatted(savedStorage.getId(), savedFood.getFoodId());
+                {
+                    "movementDateTime": "2026-10-23T12:00:00",
+                    "storageId": %d,
+                    "details": [
+                        {
+                            "foodId": %d,
+                            "selectedUnit": "KG",
+                            "cantidad": null
+                        }
+                    ]
+                }
+                """.formatted(savedStorage.getId(), savedFood.getFoodId());
 
         mockMvc.perform(authenticatedPost("/api/v1/storagesentry")
                 .contentType("application/json")
                 .content(requestBody))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
 
         assertEquals(0, storageEntryRepository.count());
 
         assertTrue(storageItemRepository
-            .findByStorageIdAndFoodId(
-                savedStorage.getId(),
-                savedFood.getFoodId())
-            .isEmpty());
+                .findByStorageIdAndFoodId(
+                        savedStorage.getId(),
+                        savedFood.getFoodId())
+                .isEmpty());
     }
-
 
     @Test
     public void testIntegrationStorageEntriesWithPagination() throws Exception {

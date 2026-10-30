@@ -42,9 +42,7 @@ class StorageItemServiceTest {
                 new UsernamePasswordAuthenticationToken(
                         AUTHENTICATED_EMAIL,
                         null,
-                        List.of()
-                )
-        );
+                        List.of()));
     }
 
     @AfterEach
@@ -61,15 +59,13 @@ class StorageItemServiceTest {
         Page<StorageItem> expectedItems = new PageImpl<>(List.of(item));
 
         when(storageItemRepository.findAllByStorage_Owner_EmailIgnoreCase(
-                AUTHENTICATED_EMAIL, pageable
-        )).thenReturn(expectedItems);
+                AUTHENTICATED_EMAIL, pageable)).thenReturn(expectedItems);
 
         Page<StorageItem> result = storageItemService.getStorageItems(pageable);
 
         assertEquals(expectedItems, result);
         verify(storageItemRepository).findAllByStorage_Owner_EmailIgnoreCase(
-                AUTHENTICATED_EMAIL, pageable
-        );
+                AUTHENTICATED_EMAIL, pageable);
         verifyNoMoreInteractions(storageItemRepository);
     }
 
@@ -79,32 +75,27 @@ class StorageItemServiceTest {
         expectedItem.setId(1L);
 
         when(storageItemRepository.findByIdAndStorage_Owner_EmailIgnoreCase(
-                1L, AUTHENTICATED_EMAIL
-        )).thenReturn(Optional.of(expectedItem));
+                1L, AUTHENTICATED_EMAIL)).thenReturn(Optional.of(expectedItem));
 
         StorageItem result = storageItemService.getStorageItem(1L);
 
         assertEquals(expectedItem, result);
         verify(storageItemRepository).findByIdAndStorage_Owner_EmailIgnoreCase(
-                1L, AUTHENTICATED_EMAIL
-        );
+                1L, AUTHENTICATED_EMAIL);
         verifyNoMoreInteractions(storageItemRepository);
     }
 
     @Test
     void shouldThrowNotFoundExceptionWhenItemDoesNotExist() {
         when(storageItemRepository.findByIdAndStorage_Owner_EmailIgnoreCase(
-                99L, AUTHENTICATED_EMAIL
-        )).thenReturn(Optional.empty());
+                99L, AUTHENTICATED_EMAIL)).thenReturn(Optional.empty());
 
         assertThrows(
                 NotFoundException.class,
-                () -> storageItemService.getStorageItem(99L)
-        );
+                () -> storageItemService.getStorageItem(99L));
 
         verify(storageItemRepository).findByIdAndStorage_Owner_EmailIgnoreCase(
-                99L, AUTHENTICATED_EMAIL
-        );
+                99L, AUTHENTICATED_EMAIL);
         verifyNoMoreInteractions(storageItemRepository);
     }
 }

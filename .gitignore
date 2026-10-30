@@ -23,3 +23,7 @@
 hs_err_pid*
 replay_pid*
 target/
+# Environment variables
+.env
+.env.*
+!.env.example

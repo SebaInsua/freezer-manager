@@ -75,29 +75,15 @@ class StorageItemIntegrationTest {
         return storageRepository.save(storage);
     }
 
-    private Storage createStorage(String email, BigDecimal capacity) {
-        User owner = new User();
-        owner.setEmail(email);
-        owner.setPassword("test-password-hash");
-        owner = userRepository.save(owner);
-
-        return createStorage(owner, capacity);
-    }
-
     private RequestPostProcessor authenticatedAs(User user) {
         String token = jwtService.generateToken(user.getEmail());
 
         return request -> {
             request.addHeader(
                     HttpHeaders.AUTHORIZATION,
-                    "Bearer " + token
-            );
+                    "Bearer " + token);
             return request;
         };
-    }
-
-    private RequestPostProcessor authenticatedAs(Storage storage) {
-        return authenticatedAs(storage.getOwner());
     }
 
     private Set<UnitOfMeasure> supportedUnits() {
@@ -117,8 +103,7 @@ class StorageItemIntegrationTest {
     private StorageItem createStorageItem(
             Storage storage,
             Food food,
-            BigDecimal quantity
-    ) {
+            BigDecimal quantity) {
         StorageItem item = new StorageItem();
         item.setStorage(storage);
         item.setFood(food);
@@ -131,7 +116,7 @@ class StorageItemIntegrationTest {
         User user = createUser();
 
         mockMvc.perform(get("/api/v1/storageitems")
-                        .with(authenticatedAs(user)))
+                .with(authenticatedAs(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(0)))
                 .andExpect(jsonPath("$.empty").value(true))
@@ -153,8 +138,8 @@ class StorageItemIntegrationTest {
         createStorageItem(storage2, food2, BigDecimal.valueOf(10));
 
         mockMvc.perform(get("/api/v1/storageitems")
-                        .with(authenticatedAs(owner))
-                        .param("sort", "id,asc"))
+                .with(authenticatedAs(owner))
+                .param("sort", "id,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].storage.capacidadLitros",
@@ -180,11 +165,10 @@ class StorageItemIntegrationTest {
         StorageItem item = createStorageItem(
                 storage,
                 food,
-                BigDecimal.valueOf(20)
-        );
+                BigDecimal.valueOf(20));
 
         mockMvc.perform(get("/api/v1/storageitems/{id}", item.getId())
-                        .with(authenticatedAs(owner)))
+                .with(authenticatedAs(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(item.getId()))
                 .andExpect(jsonPath("$.storage.capacidadLitros",
@@ -203,8 +187,7 @@ class StorageItemIntegrationTest {
         StorageItem item = createStorageItem(
                 storage,
                 food,
-                BigDecimal.valueOf(20)
-        );
+                BigDecimal.valueOf(20));
 
         Long nonexistentId = item.getId() + 1;
 
@@ -212,11 +195,10 @@ class StorageItemIntegrationTest {
             nonexistentId++;
         }
 
-        String expectedMessage =
-                "No existe un elemento en el inventario con el ID: " + nonexistentId;
+        String expectedMessage = "No existe un elemento en el inventario con el ID: " + nonexistentId;
 
         mockMvc.perform(get("/api/v1/storageitems/{id}", nonexistentId)
-                        .with(authenticatedAs(owner)))
+                .with(authenticatedAs(owner)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value(expectedMessage))
                 .andExpect(jsonPath("$.status").value(404));
@@ -229,23 +211,21 @@ class StorageItemIntegrationTest {
         for (int i = 1; i <= 3; i++) {
             Storage storage = createStorage(
                     owner,
-                    BigDecimal.valueOf(100 + i)
-            );
+                    BigDecimal.valueOf(100 + i));
 
             Food food = createFood("Alimento " + i);
 
             createStorageItem(
                     storage,
                     food,
-                    BigDecimal.valueOf(i)
-            );
+                    BigDecimal.valueOf(i));
         }
 
         mockMvc.perform(get("/api/v1/storageitems")
-                        .with(authenticatedAs(owner))
-                        .param("page", "0")
-                        .param("size", "1")
-                        .param("sort", "id,asc"))
+                .with(authenticatedAs(owner))
+                .param("page", "0")
+                .param("size", "1")
+                .param("sort", "id,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(1)))
@@ -260,30 +240,27 @@ class StorageItemIntegrationTest {
         for (int i = 1; i <= 3; i++) {
             Storage storage = createStorage(
                     owner,
-                    BigDecimal.valueOf(100 + i)
-            );
+                    BigDecimal.valueOf(100 + i));
 
             Food food = createFood("Alimento " + i);
 
             createStorageItem(
                     storage,
                     food,
-                    BigDecimal.valueOf(i)
-            );
+                    BigDecimal.valueOf(i));
         }
 
         mockMvc.perform(get("/api/v1/storageitems")
-                        .with(authenticatedAs(owner))
-                        .param("page", "1")
-                        .param("size", "1")
-                        .param("sort", "id,asc"))
+                .with(authenticatedAs(owner))
+                .param("page", "1")
+                .param("size", "1")
+                .param("sort", "id,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(2)))
                 .andExpect(jsonPath("$.totalElements").value(3))
                 .andExpect(jsonPath("$.totalPages").value(3));
     }
-
 
     @Test
     void testIntegrationStorageItemsWithDescendingSort() throws Exception {
@@ -292,28 +269,25 @@ class StorageItemIntegrationTest {
         for (int i = 1; i <= 3; i++) {
             Storage storage = createStorage(
                     owner,
-                    BigDecimal.valueOf(100 + i)
-            );
+                    BigDecimal.valueOf(100 + i));
 
             Food food = createFood("Alimento " + i);
 
             createStorageItem(
                     storage,
                     food,
-                    BigDecimal.valueOf(i)
-            );
+                    BigDecimal.valueOf(i));
         }
 
         mockMvc.perform(get("/api/v1/storageitems")
-                        .with(authenticatedAs(owner))
-                        .param("sort", "id,desc"))
+                .with(authenticatedAs(owner))
+                .param("sort", "id,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(3)))
                 .andExpect(jsonPath("$.content[0].cantidad", comparesEqualTo(3)))
                 .andExpect(jsonPath("$.content[1].cantidad", comparesEqualTo(2)))
                 .andExpect(jsonPath("$.content[2].cantidad", comparesEqualTo(1)));
     }
-
 
     @Test
     void testIntegrationStorageItemsCannotBeAccessedByAnotherUser() throws Exception {
@@ -326,11 +300,10 @@ class StorageItemIntegrationTest {
         StorageItem item = createStorageItem(
                 storage,
                 food,
-                BigDecimal.valueOf(20)
-        );
+                BigDecimal.valueOf(20));
 
         mockMvc.perform(get("/api/v1/storageitems/{id}", item.getId())
-                        .with(authenticatedAs(otherUser)))
+                .with(authenticatedAs(otherUser)))
                 .andExpect(status().isNotFound());
     }
 }

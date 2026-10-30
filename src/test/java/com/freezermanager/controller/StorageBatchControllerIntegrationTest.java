@@ -97,8 +97,7 @@ class StorageBatchControllerIntegrationTest {
 
         StorageEntry entry = new StorageEntry();
         entry.setMovementDateTime(
-                LocalDateTime.of(2026, 10, 19, 12, 0)
-        );
+                LocalDateTime.of(2026, 10, 19, 12, 0));
         entry.setStorage(storage);
         entry.setRecordedAt(LocalDateTime.now());
         entry.setDetails(new java.util.ArrayList<>());
@@ -132,11 +131,10 @@ class StorageBatchControllerIntegrationTest {
                 owner,
                 "Pollo",
                 LocalDate.of(2027, 2, 10),
-                ExpirationDateType.ACTUAL
-        );
+                ExpirationDateType.ACTUAL);
 
         mockMvc.perform(get("/api/v1/storagebatches")
-                        .header("Authorization", authorizationHeader(owner)))
+                .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].batchId").value(batch.getId()))
@@ -155,11 +153,10 @@ class StorageBatchControllerIntegrationTest {
                 owner,
                 "Pescado",
                 null,
-                ExpirationDateType.UNDEFINED
-        );
+                ExpirationDateType.UNDEFINED);
 
         mockMvc.perform(get("/api/v1/storagebatches")
-                        .header("Authorization", authorizationHeader(owner)))
+                .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].foodName").value("Pescado"))
@@ -172,7 +169,7 @@ class StorageBatchControllerIntegrationTest {
         User owner = createUser();
 
         mockMvc.perform(get("/api/v1/storagebatches")
-                        .header("Authorization", authorizationHeader(owner)))
+                .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }
@@ -185,11 +182,10 @@ class StorageBatchControllerIntegrationTest {
                 owner,
                 "Carne",
                 LocalDate.of(2027, 1, 17),
-                ExpirationDateType.ESTIMATED
-        );
+                ExpirationDateType.ESTIMATED);
 
         mockMvc.perform(get("/api/v1/storagebatches")
-                        .header("Authorization", authorizationHeader(owner)))
+                .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].batchId").value(batch.getId()))
