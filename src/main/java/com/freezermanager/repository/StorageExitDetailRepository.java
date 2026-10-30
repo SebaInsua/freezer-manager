@@ -33,4 +33,18 @@ public interface StorageExitDetailRepository
             @Param("id") Long id,
             @Param("email") String email
     );
+
+    @Query("""
+        SELECT d FROM StorageExitDetail d
+        JOIN FETCH d.food
+        JOIN FETCH d.storageExit e
+        JOIN FETCH e.storage
+        JOIN FETCH d.storageBatch
+        WHERE e.storageExitId IN :ids
+        AND LOWER(e.storage.owner.email) = LOWER(:email)
+        """)
+    List<StorageExitDetail> findAllByExitIdsAndOwnerEmail(
+            @Param("ids") List<Long> ids,
+            @Param("email") String email
+    );
 }
