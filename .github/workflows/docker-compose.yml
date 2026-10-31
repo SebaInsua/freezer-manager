@@ -1,0 +1,91 @@
+
+name: Docker Compose CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  docker-compose-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create CI environment file
+        run: |
+          JWT_SECRET=$(openssl rand -base64 32)
+
+          cat > .env <<EOF
+          POSTGRES_DB=freezer_manager
+          POSTGRES_USER=freezer_user
+          POSTGRES_PASSWORD=ci_postgres_password
+          DB_USERNAME=freezer_user
+          DB_PASSWORD=ci_postgres_password
+          SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/freezer_manager
+          SPRING_PROFILES_ACTIVE=docker
+          JWT_SECRET=$JWT_SECRET
+          EOF
+
+      - name: Build and start containers
+        run: docker compose up -d --build
+
+      - name: Wait for API
+        run: |
+          for i in {1..60}; do
+            if curl --silent --fail http://localhost:8080/v3/api-docs > /dev/null; then
+              echo "API is ready"
+              exit 0
+            fi
+
+            echo "Waiting for API..."
+            sleep 5
+          done
+
+          echo "API did not become ready"
+          docker compose logs
+          exit 1
+
+      - name: Test registration and login
+        run: |
+          REGISTER_RESPONSE=$(curl --silent --show-error --fail \
+            -X POST http://localhost:8080/api/v1/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"ci-test@example.com","password":"TestPassword123!"}')
+
+          TOKEN=$(echo "$REGISTER_RESPONSE" | python -c \
+            "import json,sys; print(json.load(sys.stdin)['token'])")
+
+          LOGIN_RESPONSE=$(curl --silent --show-error --fail \
+            -X POST http://localhost:8080/api/v1/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"ci-test@example.com","password":"TestPassword123!"}')
+
+          echo "$LOGIN_RESPONSE" | python -c \
+            "import json,sys; assert json.load(sys.stdin)['token']"
+
+          echo "Registration and login successful"
+
+          echo "JWT_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      - name: Test protected endpoint
+        run: |
+          curl --silent --show-error --fail \
+            http://localhost:8080/api/v1/foods \
+            -H "Authorization: Bearer $JWT_TOKEN"
+
+          echo "Protected endpoint access successful"
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v
