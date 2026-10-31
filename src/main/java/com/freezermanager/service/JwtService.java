@@ -23,6 +23,18 @@ public class JwtService {
             @Value("${security.jwt.secret}") String secret,
             @Value("${security.jwt.expiration-ms:3600000}") long expirationMs) {
 
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "La configuración security.jwt.secret es obligatoria."
+            );
+        }
+
+        if (expirationMs <= 0) {
+            throw new IllegalStateException(
+                    "La expiración del JWT debe ser mayor que cero."
+            );
+        }
+
         byte[] keyBytes = Decoders.BASE64.decode(secret);
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
         this.expirationMs = expirationMs;
@@ -47,8 +59,10 @@ public class JwtService {
     public boolean isTokenValid(String token, String expectedEmail) {
         Claims claims = extractAllClaims(token);
 
-        return expectedEmail.equals(claims.getSubject())
-                && claims.getExpiration().after(new Date());
+    return expectedEmail != null
+            && expectedEmail.equals(claims.getSubject())
+            && claims.getExpiration() != null
+            && claims.getExpiration().after(new Date());
     }
 
     private Claims extractAllClaims(String token) {
