@@ -17,6 +17,7 @@ import com.freezermanager.dto.response.StorageItemResponse;
 import com.freezermanager.mapper.StorageItemMapper;
 import com.freezermanager.service.StorageItemService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/storageitems")
+@SecurityRequirement(name = "bearerAuth")
 public class StorageItemController {
 
     private final StorageItemService storageItemService;

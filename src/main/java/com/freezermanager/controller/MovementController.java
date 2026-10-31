@@ -16,6 +16,7 @@ import com.freezermanager.domain.storage.MovementType;
 import com.freezermanager.dto.response.MovementResponse;
 import com.freezermanager.service.MovementService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/movements")
+@SecurityRequirement(name = "bearerAuth")
 public class MovementController {
 
     private final MovementService movementService;

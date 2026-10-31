@@ -191,22 +191,22 @@ posiblemente en commits o PRs pequeños.
 ### FM-043 --- Historial y consultas de movimientos
 
 **Prioridad:** alta · **Tipo:** funcionalidad/API · **Estado:**
-pendiente
+finalizado
 
--   [ ] Inspeccionar los endpoints y repositorios actuales de ingresos y
+-   [x] Inspeccionar los endpoints y repositorios actuales de ingresos y
     egresos para detectar qué consultas ya existen.
--   [ ] Definir un contrato coherente para consultar movimientos por
+-   [x] Definir un contrato coherente para consultar movimientos por
     tipo, alimento, almacenamiento y período.
--   [ ] Implementar filtros, ordenamiento y paginación si corresponde al
+-   [x] Implementar filtros, ordenamiento y paginación si corresponde al
     volumen esperado.
--   [ ] Asegurar que el detalle histórico conserve la cantidad y unidad
+-   [x] Asegurar que el detalle histórico conserve la cantidad y unidad
     originales solicitadas, aunque el inventario use cantidades
     normalizadas.
--   [ ] Integrar la autorización de FM-045 para que cada usuario solo
+-   [x] Integrar la autorización de FM-045 para que cada usuario solo
     vea los movimientos permitidos.
--   [ ] Añadir pruebas para filtros, límites de fechas, orden,
+-   [x] Añadir pruebas para filtros, límites de fechas, orden,
     paginación y aislamiento de datos.
--   [ ] Documentar los parámetros y ejemplos de respuesta.
+-   [x] Documentar los parámetros y ejemplos de respuesta.
 
 **Criterios de aceptación:** un usuario autenticado puede consultar un
 historial útil con filtros documentados y no puede acceder a movimientos
@@ -215,21 +215,21 @@ de otro usuario.
 ### FM-046 --- Docker y ejecución reproducible
 
 **Prioridad:** muy alta · **Tipo:** infraestructura · **Estado:**
-pendiente
+finalizado
 
--   [ ] Crear un `Dockerfile` adecuado para empaquetar y ejecutar la
+-   [x] Crear un `Dockerfile` adecuado para empaquetar y ejecutar la
     API.
--   [ ] Crear `compose.yaml` con la API y PostgreSQL.
--   [ ] Configurar URL y credenciales de base de datos, secreto JWT y
+-   [x] Crear `compose.yaml` con la API y PostgreSQL.
+-   [x] Configurar URL y credenciales de base de datos, secreto JWT y
     demás valores mediante variables de entorno.
--   [ ] Añadir `.env.example` con placeholders no sensibles; no
+-   [x] Añadir `.env.example` con placeholders no sensibles; no
     versionar secretos reales.
--   [ ] Configurar persistencia de PostgreSQL mediante un volumen.
--   [ ] Configurar una estrategia razonable de
+-   [x] Configurar persistencia de PostgreSQL mediante un volumen.
+-   [x] Configurar una estrategia razonable de
     disponibilidad/healthcheck para PostgreSQL y el arranque de la API.
--   [ ] Comprobar que las pruebas continúen ejecutándose con el perfil
+-   [x] Comprobar que las pruebas continúen ejecutándose con el perfil
     `test` y H2, sin depender de Docker.
--   [ ] Validar la ejecución desde un entorno limpio siguiendo las
+-   [x] Validar la ejecución desde un entorno limpio siguiendo las
     instrucciones del README.
 
 **Criterios de aceptación:** con Docker instalado y las variables
@@ -239,16 +239,16 @@ puede completar un flujo de registro, login y acceso autorizado.
 ### FM-047 --- Configuración segura y migraciones de base de datos
 
 **Prioridad:** alta antes de una demo pública · **Tipo:**
-seguridad/operaciones · **Estado:** pendiente
+seguridad/operaciones · **Estado:** finalizado
 
--   [ ] Revisar credenciales, secretos, perfiles y configuración CORS.
--   [ ] Confirmar que no haya secretos reales ni datos sensibles
+-   [x] Revisar credenciales, secretos, perfiles y configuración CORS.
+-   [x] Confirmar que no haya secretos reales ni datos sensibles
     versionados.
--   [ ] Evaluar Flyway o Liquibase para versionar el esquema en vez de
+-   [x] Evaluar Flyway o Liquibase para versionar el esquema en vez de
     depender de actualización automática.
--   [ ] Definir una configuración separada para desarrollo y tests, y
+-   [x] Definir una configuración separada para desarrollo y tests, y
     una configuración segura para una futura demo.
--   [ ] Documentar límites conocidos y evitar exponer configuración de
+-   [x] Documentar límites conocidos y evitar exponer configuración de
     desarrollo a Internet.
 
 **Criterios de aceptación:** secretos externalizados, esquema
@@ -258,21 +258,21 @@ públicamente para cerrar esta tarea.
 ### FM-048 --- Documentación y demo de portfolio
 
 **Prioridad:** alta · **Tipo:** documentación/portfolio · **Estado:**
-pendiente
+finalizado
 
--   [ ] Actualizar el README con propósito, stack, arquitectura y
+-   [x] Actualizar el README con propósito, stack, arquitectura y
     funcionalidades implementadas.
--   [ ] Documentar requisitos e instrucciones para ejecutar localmente y
+-   [x] Documentar requisitos e instrucciones para ejecutar localmente y
     con Docker.
--   [ ] Documentar endpoints, DTOs, códigos de respuesta y errores
+-   [x] Documentar endpoints, DTOs, códigos de respuesta y errores
     mediante OpenAPI/Swagger.
--   [ ] Añadir ejemplos de registro, login, uso del JWT y consultas del
+-   [x] Añadir ejemplos de registro, login, uso del JWT y consultas del
     historial.
--   [ ] Documentar las decisiones relevantes de seguridad: contraseñas
+-   [x] Documentar las decisiones relevantes de seguridad: contraseñas
     hasheadas, autorización y aislamiento por usuario.
--   [ ] Incluir ejemplos de configuración con placeholders, nunca
+-   [x] Incluir ejemplos de configuración con placeholders, nunca
     secretos reales.
--   [ ] Verificar que una persona pueda clonar y ejecutar el proyecto
+-   [x] Verificar que una persona pueda clonar y ejecutar el proyecto
     siguiendo solamente el README.
 
 **Criterios de aceptación:** una persona técnica puede clonar el
@@ -283,16 +283,16 @@ documentación.
 ### FM-049 --- Revisión final de robustez del inventario
 
 **Prioridad:** media-alta · **Tipo:** calidad/backend · **Estado:**
-pendiente de reevaluar
+finalizado
 
--   [ ] Revisar si la protección ante solicitudes concurrentes que
+-   [x] Revisar si la protección ante solicitudes concurrentes que
     consumen el mismo stock está cubierta por la implementación y los
     tests existentes.
--   [ ] Si hay una brecha real, elegir una estrategia apropiada (por
+-   [x] Si hay una brecha real, elegir una estrategia apropiada (por
     ejemplo, bloqueo optimista/pesimista o actualización atómica).
--   [ ] Añadir pruebas para la estrategia elegida; no confundir rollback
+-   [x] Añadir pruebas para la estrategia elegida; no confundir rollback
     transaccional con una prueba real de concurrencia.
--   [ ] Documentar la decisión y los límites restantes.
+-   [x] Documentar la decisión y los límites restantes.
 
 **Criterios de aceptación:** los tests y la implementación respaldan la
 protección ante egresos concurrentes. No duplicar trabajo si ya está
@@ -300,16 +300,15 @@ resuelto; inspeccionar el código antes de actuar.
 
 ### FM-050 --- Paginación y filtros generales
 
-**Prioridad:** media · **Tipo:** API · **Estado:** pendiente de
-reevaluar
+**Prioridad:** media · **Tipo:** API · **Estado:** finalizado
 
--   [ ] Revisar los listados que todavía devuelvan colecciones
+-   [x] Revisar los listados que todavía devuelvan colecciones
     completas.
--   [ ] Añadir paginación y orden donde resulte útil y no esté ya
+-   [x] Añadir paginación y orden donde resulte útil y no esté ya
     cubierto por FM-043.
--   [ ] Mantener filtros por estado activo y agregar otros solo si
+-   [x] Mantener filtros por estado activo y agregar otros solo si
     responden a una necesidad concreta.
--   [ ] Añadir tests para parámetros inválidos y resultados paginados.
+-   [x] Añadir tests para parámetros inválidos y resultados paginados.
 
 **Criterios de aceptación:** los listados que pueden crecer se consultan
 de forma controlada y documentada. Evitar duplicar el alcance del

@@ -22,6 +22,7 @@ import com.freezermanager.dto.response.StorageExitResponse;
 import com.freezermanager.mapper.StorageExitMapper;
 import com.freezermanager.service.StorageExitService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -33,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/storagesexit")
+@SecurityRequirement(name = "bearerAuth")
 public class StorageExitController {
 
     private final StorageExitService storageExitService;
