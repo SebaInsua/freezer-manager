@@ -13,15 +13,23 @@ import org.springframework.data.domain.Sort;
 import com.freezermanager.dto.StorageBatchResponse;
 import com.freezermanager.service.StorageBatchService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/storagebatches")
+@SecurityRequirement(name = "bearerAuth")
 public class StorageBatchController {
 
     private final StorageBatchService storageBatchService;
 
+    @Operation(
+        summary = "Listar lotes de inventario",
+        description = "Obtiene los lotes de inventario del usuario autenticado, paginados y ordenados por identificador."
+    )
     @GetMapping
     public ResponseEntity<Page<StorageBatchResponse>> getAllBatches(
             @PageableDefault(

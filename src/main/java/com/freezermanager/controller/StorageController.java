@@ -23,6 +23,7 @@ import com.freezermanager.mapper.StorageMapper;
 import com.freezermanager.service.StorageCapacityService;
 import com.freezermanager.service.StorageService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -34,6 +35,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/storages")
+@SecurityRequirement(name = "bearerAuth")
 public class StorageController {
 
     private final StorageService storageService;
