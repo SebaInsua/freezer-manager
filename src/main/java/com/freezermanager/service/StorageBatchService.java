@@ -1,8 +1,8 @@
 
 package com.freezermanager.service;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -32,13 +32,11 @@ public class StorageBatchService {
     }
 
     @Transactional(readOnly = true)
-    public List<StorageBatchResponse> getAllBatches() {
+    public Page<StorageBatchResponse> getAllBatches(Pageable pageable) {
         String email = getAuthenticatedEmail();
 
-        return storageBatchRepository.findAllWithDetailsByOwnerEmail(email)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return storageBatchRepository.findAllWithDetailsByOwnerEmail(email, pageable)
+                .map(this::toResponse);
     }
 
     private StorageBatchResponse toResponse(StorageBatch batch) {
