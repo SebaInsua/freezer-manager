@@ -136,13 +136,13 @@ class StorageBatchControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/storagebatches")
                 .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].batchId").value(batch.getId()))
-                .andExpect(jsonPath("$[0].foodName").value("Pollo"))
-                .andExpect(jsonPath("$[0].initialQuantity", comparesEqualTo(3)))
-                .andExpect(jsonPath("$[0].availableQuantity", comparesEqualTo(2)))
-                .andExpect(jsonPath("$[0].expirationDate").value("2027-02-10"))
-                .andExpect(jsonPath("$[0].expirationDateType").value("ACTUAL"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].batchId").value(batch.getId()))
+                .andExpect(jsonPath("$.content[0].foodName").value("Pollo"))
+                .andExpect(jsonPath("$.content[0].initialQuantity", comparesEqualTo(3)))
+                .andExpect(jsonPath("$.content[0].availableQuantity", comparesEqualTo(2)))
+                .andExpect(jsonPath("$.content[0].expirationDate").value("2027-02-10"))
+                .andExpect(jsonPath("$.content[0].expirationDateType").value("ACTUAL"));
     }
 
     @Test
@@ -158,10 +158,10 @@ class StorageBatchControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/storagebatches")
                 .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].foodName").value("Pescado"))
-                .andExpect(jsonPath("$[0].expirationDate").doesNotExist())
-                .andExpect(jsonPath("$[0].expirationDateType").value("UNDEFINED"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].foodName").value("Pescado"))
+                .andExpect(jsonPath("$.content[0].expirationDate").doesNotExist())
+                .andExpect(jsonPath("$.content[0].expirationDateType").value("UNDEFINED"));
     }
 
     @Test
@@ -171,7 +171,9 @@ class StorageBatchControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/storagebatches")
                 .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(jsonPath("$.content", hasSize(0)))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
     }
 
     @Test
@@ -187,10 +189,77 @@ class StorageBatchControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/storagebatches")
                 .header("Authorization", authorizationHeader(owner)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].batchId").value(batch.getId()))
-                .andExpect(jsonPath("$[0].foodName").value("Carne"))
-                .andExpect(jsonPath("$[0].expirationDate").value("2027-01-17"))
-                .andExpect(jsonPath("$[0].expirationDateType").value("ESTIMATED"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].batchId").value(batch.getId()))
+                .andExpect(jsonPath("$.content[0].foodName").value("Carne"))
+                .andExpect(jsonPath("$.content[0].expirationDate").value("2027-01-17"))
+                .andExpect(jsonPath("$.content[0].expirationDateType").value("ESTIMATED"));
+    }
+
+    @Test
+    void shouldReturnBatchesAccordingToRequestedPageSize() throws Exception {
+        User owner = createUser();
+
+        createBatch(owner, "Pollo", LocalDate.of(2027, 2, 10), ExpirationDateType.ACTUAL);
+        createBatch(owner, "Carne", LocalDate.of(2027, 3, 10), ExpirationDateType.ACTUAL);
+        createBatch(owner, "Pescado", LocalDate.of(2027, 4, 10), ExpirationDateType.ACTUAL);
+
+        mockMvc.perform(get("/api/v1/storagebatches")
+                .param("page", "0")
+                .param("size", "2")
+                .header("Authorization", authorizationHeader(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.number").value(0))
+                .andExpect(jsonPath("$.size").value(2));
+    }
+
+    @Test
+    void shouldReturnDifferentBatchesWhenRequestingNextPage() throws Exception {
+        User owner = createUser();
+
+        createBatch(owner, "Pollo", LocalDate.of(2027, 2, 10), ExpirationDateType.ACTUAL);
+        createBatch(owner, "Carne", LocalDate.of(2027, 3, 10), ExpirationDateType.ACTUAL);
+        createBatch(owner, "Pescado", LocalDate.of(2027, 4, 10), ExpirationDateType.ACTUAL);
+
+        mockMvc.perform(get("/api/v1/storagebatches")
+                .param("page", "0")
+                .param("size", "2")
+                .header("Authorization", authorizationHeader(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].foodName").value("Pollo"))
+                .andExpect(jsonPath("$.content[1].foodName").value("Carne"));
+
+        mockMvc.perform(get("/api/v1/storagebatches")
+                .param("page", "1")
+                .param("size", "2")
+                .header("Authorization", authorizationHeader(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].foodName").value("Pescado"))
+                .andExpect(jsonPath("$.number").value(1));
+    }
+
+    @Test
+    void shouldReturnOnlyBatchesBelongingToAuthenticatedUser() throws Exception {
+        User owner = createUser();
+
+        User anotherUser = new User();
+        anotherUser.setEmail("another-user@example.com");
+        anotherUser.setPassword("test-password-hash");
+        userRepository.save(anotherUser);
+
+        createBatch(owner, "Pollo", LocalDate.of(2027, 2, 10), ExpirationDateType.ACTUAL);
+        createBatch(anotherUser, "Carne", LocalDate.of(2027, 3, 10), ExpirationDateType.ACTUAL);
+
+        mockMvc.perform(get("/api/v1/storagebatches")
+                .header("Authorization", authorizationHeader(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].foodName").value("Pollo"))
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 }
