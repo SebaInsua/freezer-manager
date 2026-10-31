@@ -44,7 +44,7 @@ services:
       POSTGRES_USER: freezer_test
       POSTGRES_PASSWORD: freezer_test_local
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
