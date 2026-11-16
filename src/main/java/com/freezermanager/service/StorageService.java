@@ -3,8 +3,6 @@ package com.freezermanager.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.freezermanager.domain.storage.Storage;
@@ -23,6 +21,7 @@ public class StorageService {
 
     private final StorageRepository storageRepository;
     private final UserRepository userRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public Page<Storage> getStorages(Pageable pageable) {
         String email = getAuthenticatedEmail();
@@ -39,16 +38,7 @@ public class StorageService {
     }
 
     private String getAuthenticatedEmail() {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalStateException(
-                    "No hay un usuario autenticado."
-            );
-        }
-
-        return authentication.getName();
+        return currentUserProvider.getCurrentUsername();
     }
 
     @Transactional
