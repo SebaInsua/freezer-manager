@@ -1,12 +1,14 @@
 # Freezer Manager
 
-Freezer Manager is a REST API designed to help households manage food
-purchases, freezer inventory, and food consumption.
+**A REST API for household food inventory management.**
 
-The application provides inventory tracking, batch management, storage
-capacity monitoring, and a history of stock movements. It also includes
-user authentication and authorization to ensure that each user can
-access only their own data.
+Freezer Manager helps households manage food purchases, freezer inventory, storage capacity, and consumption through a secure, user-specific REST API.
+
+Built with Java 21, Spring Boot, PostgreSQL, and Docker.
+
+**Live API:** https://freezer-manager-api.onrender.com
+
+**Repository:** https://github.com/SebaInsua/freezer-manager
 
 ## Project Goals
 
@@ -34,6 +36,38 @@ access only their own data.
 -   **Pagination and Filtering:** Retrieve large collections
     efficiently.
 
+## Architecture
+
+Freezer Manager follows a layered architecture to separate responsibilities and keep the application maintainable.
+
+The main request flow is:
+
+
+         Client
+            |
+            v
+        REST Controllers
+            |
+            v
+        Services
+            |
+            v
+        Repositories
+            |
+            v
+        PostgreSQL
+
+
+### Main Layers
+
+- **Controllers:** Handle HTTP requests and responses, delegating operations to the service layer without containing business logic.
+- **Services:** Contain the business logic and coordinate application operations.
+- **Repositories:** Handle database access using Spring Data JPA.
+- **Entities:** Represent the domain model and its relationships in the database.
+- **Security:** Manages authentication and authorization using Spring Security and JWT.
+
+This separation keeps business logic independent from HTTP handling and database access, improving maintainability and testability.
+
 ## Tech Stack
 
 -   Java 21
@@ -54,6 +88,25 @@ To run the application using Docker, you need:
 
 -   Docker
 -   Docker Compose
+
+## Environment Variables
+
+The application uses environment variables to manage configuration and sensitive information.
+
+The following variables are required:
+
+|           Variable       |               Description                 |
+| `SPRING_PROFILES_ACTIVE` | Specifies the active Spring Boot profile (docker or prod). |
+| `SPRING_DATASOURCE_URL`  | PostgreSQL database connection URL.       |
+| `DB_USERNAME`            | PostgreSQL database username.             |
+| `DB_PASSWORD`            | PostgreSQL database password.             |
+| `JWT_SECRET`             | Secret key used to sign JWT tokens.       |
+
+For local development, these variables are configured through the `.env` file and Docker Compose.
+
+In production, they are configured through Render environment settings.
+
+**Important:** Never commit credentials, database connection secrets, or JWT signing keys to the repository.
 
 ## Getting Started
 
@@ -136,6 +189,31 @@ http://localhost:8080/v3/api-docs
 Protected endpoints require a valid JWT access token. Use the
 **Authorize** button in Swagger UI to provide your bearer token.
 
+## Production Deployment
+
+Freezer Manager is deployed to production using **Render**.
+
+The production environment consists of:
+
+- **Application hosting:** Render Web Service.
+- **Containerization:** Docker.
+- **Database:** Render-managed PostgreSQL.
+- **Configuration:** Environment variables.
+- **Database migrations:** Flyway, executed automatically at application startup.
+
+The application uses a dedicated Spring Boot production profile (`prod`) to configure database connectivity and production-specific settings.
+
+Sensitive configuration values, including database credentials and the JWT secret, are managed through environment variables and are not stored in the repository.
+
+Render automatically deploys new application versions when changes
+are pushed to the main branch.
+
+**Production API:**
+
+https://freezer-manager-api.onrender.com
+
+Swagger UI and OpenAPI documentation are enabled in development and disabled in production.
+
 ## API Overview
 
 The API uses the `/api/v1` base path.
@@ -157,8 +235,10 @@ Main resource endpoints:
 The API provides resource operations for managing foods, storage
 locations, inventory entries, exits, batches, and movement history.
 
-Refer to Swagger UI for the complete endpoint definitions, request
-schemas, response schemas, and available operations.
+During development, refer to Swagger UI for the complete endpoint
+definitions, request schemas, response schemas, and available operations.
+
+Swagger UI and OpenAPI documentation are disabled in production.
 
 ## Authentication
 
@@ -312,8 +392,11 @@ Main HTTP status codes:
 
 Database schema changes are managed with Flyway.
 
-Migrations are applied automatically when the application starts with
-the development or Docker profile.
+Versioned SQL migrations are applied automatically when the application starts across the Docker and production environments.
+
+Flyway tracks applied migrations in the `flyway_schema_history` table to maintain database versioning and migration consistency.
+
+Hibernate uses schema validation (`ddl-auto=validate`) to verify that entity mappings match the database schema without automatically modifying it.
 
 Current migrations:
 
@@ -322,9 +405,6 @@ Current migrations:
   V1          Initial database schema
   V2          Add users and inventory batches
   V3          Set the default active state for storage batches
-
-Hibernate uses schema validation (`ddl-auto=validate`) to verify that
-the entity mappings match the database schema.
 
 ## Stopping the Application
 
@@ -405,12 +485,16 @@ application database.
 
 ## Continuous Integration
 
-The project includes a GitHub Actions workflow that validates the
-application through automated tests and Docker Compose.
+The project uses GitHub Actions to automate testing and validate code changes.
 
-The workflow checks the PostgreSQL test environment, runs the Maven test
-suite, builds the application containers, and performs basic API
-authentication and endpoint checks.
+The CI workflow:
+
+- Sets up the Java 21 environment.
+- Starts a dedicated PostgreSQL test database using Docker Compose.
+- Executes the Maven test suite.
+- Validates application functionality through automated tests.
+
+This helps detect regressions and maintain application reliability as the project evolves.
 
 ## Project Status
 
@@ -418,15 +502,19 @@ Freezer Manager is an ongoing backend portfolio project.
 
 The current MVP includes:
 
--   User registration and JWT authentication.
--   User-specific data access.
--   Food and storage management.
--   Inventory batches and stock control.
--   Entry and exit movement history.
--   Freezer capacity monitoring.
--   Pagination and filtering.
--   Concurrency protection.
--   Docker-based deployment and database migrations.
--   Automated tests and CI validation.
+- User registration and JWT-based authentication.
+- Password hashing using BCrypt.
+- User-specific data access and authorization.
+- Food and storage management.
+- Inventory batches and stock control.
+- Entry and exit movement history.
+- Freezer capacity monitoring.
+- Pagination and filtering.
+- Concurrency protection for inventory operations.
+- Database versioning and migrations with Flyway.
+- Docker-based application deployment.
+- Production deployment on Render.
+- Automated testing with JUnit and Mockito.
+- Continuous Integration with GitHub Actions.
 
 Further improvements and features are planned as the project evolves.
